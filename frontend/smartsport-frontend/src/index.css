@@ -1,0 +1,77 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 25% 10%;
+    --foreground: 240 10% 95%;
+
+    --card: 230 25% 14%;
+    --card-foreground: 240 10% 95%;
+
+    --popover: 230 25% 12%;
+    --popover-foreground: 240 10% 95%;
+
+    --primary: 262 83% 63%;
+    --primary-foreground: 240 10% 99%;
+
+    --secondary: 230 25% 20%;
+    --secondary-foreground: 240 10% 95%;
+
+    --muted: 230 25% 18%;
+    --muted-foreground: 240 5% 75%;
+
+    --accent: 187 100% 60%;
+    --accent-foreground: 230 25% 14%;
+
+    --destructive: 350 89% 60%;
+    --destructive-foreground: 240 10% 95%;
+
+    --border: 230 25% 24%;
+    --input: 230 25% 25%;
+    --ring: 262 83% 63%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 230 30% 12%;
+    --sidebar-foreground: 240 10% 95%;
+    --sidebar-primary: 262 83% 63%;
+    --sidebar-primary-foreground: 240 10% 99%;
+    --sidebar-accent: 187 100% 60%;
+    --sidebar-accent-foreground: 230 25% 14%;
+    --sidebar-border: 230 25% 24%;
+    --sidebar-ring: 262 83% 63%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom classes */
+@layer components {
+  .clip-polygon {
+    clip-path: polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%);
+  }
+  
+  .tournament-card {
+    @apply relative overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-accent/50 hover:shadow-[0_0_15px_rgba(51,230,255,0.3)];
+  }
+  
+  .esports-gradient {
+    @apply bg-gradient-to-r from-esports-purple to-esports-accent;
+  }
+  
+  .text-glow {
+    text-shadow: 0 0 10px rgba(51, 230, 255, 0.7);
+  }
+}
