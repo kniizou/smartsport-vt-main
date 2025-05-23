@@ -143,4 +143,12 @@ export const matches = {
   delete: (id: string) => api.delete(`/rencontres/${id}/`),
 };
 
+export const utilisateurs = {
+  // Add params for filtering, e.g., by role
+  getAll: (params?: Record<string, string | number>) => api.get('/utilisateurs/', { params }),
+  getById: (id: string | number) => api.get(`/utilisateurs/${id}/`),
+  // Add create, update, delete if admins can manage users directly via API
+  // For now, focusing on read operations for the dashboard
+};
+
 export default api;

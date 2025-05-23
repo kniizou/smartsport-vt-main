@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Menu, X, LogIn, User, Gamepad, Trophy, LogOut, UserCircle } from "lucide-react";
+import { Search, Menu, X, LogIn, User, Gamepad, Trophy, LogOut, UserCircle, ShieldCheck } from "lucide-react"; // Added ShieldCheck
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 const Navbar = () => {
@@ -94,11 +94,19 @@ const Navbar = () => {
           </div>
           {isAuthenticated ? (
             <>
-              <Link to="/profile">
-                <Button variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:border-accent">
-                  <UserCircle className="mr-2 h-4 w-4" /> Profil ({user?.first_name || user?.email})
-                </Button>
-              </Link>
+              {user?.role === 'administrateur' ? (
+                <Link to="/admin/dashboard">
+                  <Button variant="outline" className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500">
+                    <ShieldCheck className="mr-2 h-4 w-4" /> Admin ({user?.first_name || user?.email})
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/profile">
+                  <Button variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:border-accent">
+                    <UserCircle className="mr-2 h-4 w-4" /> Profil ({user?.first_name || user?.email})
+                  </Button>
+                </Link>
+              )}
               <Button onClick={handleLogout} className="esports-gradient shadow-lg shadow-esports-purple/20">
                 <LogOut className="mr-2 h-4 w-4" /> Se déconnecter
               </Button>
@@ -165,11 +173,19 @@ const Navbar = () => {
             <div className="flex flex-col space-y-3 pt-3 border-t border-border">
               {isAuthenticated ? (
                 <>
-                  <Link to="/profile" onClick={toggleMenu}>
-                    <Button variant="outline" className="justify-start border-accent text-accent hover:bg-accent/10 w-full">
-                      <UserCircle className="mr-2 h-4 w-4" /> Profil ({user?.first_name || user?.email})
-                    </Button>
-                  </Link>
+                  {user?.role === 'administrateur' ? (
+                    <Link to="/admin/dashboard" onClick={toggleMenu}>
+                      <Button variant="outline" className="justify-start border-red-500/80 text-red-500 hover:bg-red-500/10 w-full">
+                        <ShieldCheck className="mr-2 h-4 w-4" /> Admin Panel
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link to="/profile" onClick={toggleMenu}>
+                      <Button variant="outline" className="justify-start border-accent text-accent hover:bg-accent/10 w-full">
+                        <UserCircle className="mr-2 h-4 w-4" /> Profil ({user?.first_name || user?.email})
+                      </Button>
+                    </Link>
+                  )}
                   <Button onClick={handleLogout} className="justify-start esports-gradient w-full">
                     <LogOut className="mr-2 h-4 w-4" /> Se déconnecter
                   </Button>

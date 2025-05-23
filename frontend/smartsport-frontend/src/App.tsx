@@ -21,6 +21,7 @@ import Contact from "./pages/Contact";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import ProfilePage from "./pages/Profile"; // Import ProfilePage
+import AdminDashboard from "./pages/AdminDashboard"; // Import AdminDashboard
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,10 @@ const App = () => (
           {/* Protected Profile Route */}
           <Route path="/profile" element={<ProtectedRoute />}>
             <Route index element={<ProfilePage />} />
+          </Route>
+          {/* Protected Admin Dashboard Route */}
+          <Route path="/admin/dashboard" element={<ProtectedRoute />}>
+            <Route index element={<AdminDashboard />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -20,14 +20,24 @@ Rencontre.objects.all().delete()
 JoueurEquipe.objects.all().delete()
 
 # Utilisateurs
-admin = Utilisateur.objects.create_user(
-    username='admin',
-    email='admin@exemple.com',
-    password='admin1234',
-    role='administrateur',
-    is_staff=True,
-    is_superuser=True
+# Ensure only one admin user with specified credentials
+Utilisateur.objects.filter(is_superuser=True).exclude(
+    email='admin@admin.com').delete()  # Remove other superusers if any
+admin, created = Utilisateur.objects.update_or_create(
+    email='admin@admin.com',
+    defaults={
+        'username': 'admin_smartsport',  # Ensure a unique username
+        'password': 'admin2025',  # Handled by create_user or set_password
+        'role': 'administrateur',
+        'is_staff': True,
+        'is_superuser': True
+    }
 )
+# Set password if new or changed
+if created or not admin.check_password('admin2025'):
+    admin.set_password('admin2025')
+    admin.save()
+
 
 orga1 = Utilisateur.objects.create(
     username='organisateur1',

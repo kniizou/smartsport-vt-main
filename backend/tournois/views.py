@@ -20,10 +20,16 @@ User = get_user_model()
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
+    """
+    Allows access only to admin users.
+    Safe methods (GET, HEAD, OPTIONS) are also restricted to admins for this specific permission class
+    if we want to ensure only admins can list all users.
+    If GET should be public for some views using this, a different permission or logic is needed.
+    For UtilisateurViewSet, listing all users should likely be admin-only.
+    """
+
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user and request.user.role == 'administrateur'
+        return request.user and request.user.is_authenticated and request.user.role == 'administrateur'
 
 
 class IsOrganisateurOrReadOnly(permissions.BasePermission):
