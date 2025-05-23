@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Lock, Mail, Eye, EyeOff, UserPlus, Check } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+// import { supabase } from "@/integrations/supabase/client"; // Remove Supabase
+import { auth as apiAuth } from "@/lib/api"; // Import your Django API auth
 import { toast } from "sonner";
+// import { useAuth } from "@/contexts/AuthContext"; // Potentially for auto-login
 
 const Register = () => {
+  // const { login: contextLogin } = useAuth(); // For auto-login after registration
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -29,37 +32,61 @@ const Register = () => {
     }
     try {
       setIsLoading(true);
-      // Inscription avec Supabase
-      const { data, error } = await supabase.auth.signUp({
+      // Inscription avec l'API Django
+      const userData = {
+        username,
         email,
         password,
-        options: {
-          data: {
-            username,
-          },
-        }
-      });
-      if (error) {
-        console.error("Erreur d'inscription:", error);
-        setErrorMessage(error.message);
-        if (error.message.includes("duplicate")) {
-          toast.error("Un utilisateur avec cet email existe déjà");
-        } else {
-          toast.error("Erreur lors de l'inscription: " + error.message);
-        }
-        return;
-      }
-      toast.success("Inscription réussie! Vous pouvez maintenant vous connecter.");
+        role: 'joueur', // Default role, or get from a form field if applicable
+        // first_name: "", // Add if you have these fields in the form
+        // last_name: "",  // Add if you have these fields in the form
+      };
+      const response = await apiAuth.register(userData);
+
+      // Assuming backend returns user info and possibly a token if auto-login is desired
+      // For now, just redirect to login
+      toast.success(response.message || "Inscription réussie! Veuillez vérifier votre email ou vous connecter.");
       navigate("/login");
-    } catch (error: any) {
-      console.error("Erreur:", error);
-      if (error.customMessage) {
-        setErrorMessage(error.customMessage);
-        toast.error(error.customMessage);
-      } else {
-        setErrorMessage("Une erreur inattendue s'est produite");
-        toast.error("Une erreur inattendue s'est produite");
+      
+      // Optional: Auto-login after registration if backend returns token and user
+      // if (response.user && response.token) {
+      //   contextLogin(response.user, response.token);
+      //   toast.success("Inscription et connexion réussies!");
+      //   navigate("/");
+      // } else {
+      //   toast.success("Inscription réussie! Vous pouvez maintenant vous connecter.");
+      //   navigate("/login");
+      // }
+
+    } catch (e: unknown) {
+      console.error("Erreur d'inscription:", e);
+      let message = "Une erreur inattendue s'est produite lors de l'inscription.";
+      if (typeof e === 'string') {
+        message = e;
+      } else if (e instanceof Error) {
+        message = e.message;
+        interface ApiError extends Error {
+          customMessage?: string;
+          response?: {
+            status?: number;
+            data?: { error?: string; detail?: string; username?: string[]; email?: string[]; password?: string[]; };
+          };
+        }
+        const error = e as ApiError;
+        if (error.customMessage) {
+          message = error.customMessage;
+        } else if (error.response?.data) {
+          // Handle specific field errors from Django REST framework
+          const errors = error.response.data;
+          if (errors.username) message = `Nom d'utilisateur: ${errors.username.join(', ')}`;
+          else if (errors.email) message = `Email: ${errors.email.join(', ')}`;
+          else if (errors.password) message = `Mot de passe: ${errors.password.join(', ')}`;
+          else if (errors.error) message = errors.error;
+          else if (errors.detail) message = errors.detail;
+        }
       }
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

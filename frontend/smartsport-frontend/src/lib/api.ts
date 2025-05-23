@@ -11,7 +11,7 @@ const api = axios.create({
 
 // Intercepteur pour ajouter le token d'authentification
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('authToken'); // Use 'authToken'
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -66,30 +66,46 @@ api.interceptors.response.use(
 export const auth = {
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login/', { email, password });
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-    }
-    return response.data;
+    // The token and user data will be set in AuthContext by Login.tsx
+    // This function just returns the data for Login.tsx to process
+    // No need to set localStorage here directly as AuthContext handles it.
+    // However, if other parts of the app rely on this direct setting,
+    // ensure consistency or refactor them to use AuthContext.
+    // For now, let's assume Login.tsx is the primary consumer and will use AuthContext.
+    // If direct setting is still desired here for some reason:
+    // if (response.data.token) {
+    //   localStorage.setItem('authToken', response.data.token);
+    // }
+    // if (response.data.user) {
+    //   localStorage.setItem('authUser', JSON.stringify(response.data.user));
+    // }
+    return response.data; // Contains { user, token, refresh } from backend
   },
 
+  // The register function below is the one to keep, as it includes optional first_name and last_name
+  // The simpler one above this comment block will be removed by this diff.
   register: async (userData: {
     username: string;
     email: string;
     password: string;
     role: string;
+    first_name?: string; // Optional fields based on RegisterSerializer
+    last_name?: string;  // Optional fields based on RegisterSerializer
   }) => {
     const response = await api.post('/auth/register/', userData);
     return response.data;
   },
 
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    // This function is now primarily handled by AuthContext.
+    // Keeping it here for potential direct calls, but ensure consistency.
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
   },
 
   getCurrentUser: () => {
-    const userStr = localStorage.getItem('user');
+    // This is now primarily handled by AuthContext.
+    const userStr = localStorage.getItem('authUser'); // Use 'authUser'
     if (userStr) {
       return JSON.parse(userStr);
     }
@@ -97,31 +113,33 @@ export const auth = {
   },
 
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    // This is now primarily handled by AuthContext.
+    return !!localStorage.getItem('authToken'); // Use 'authToken'
   },
 };
 
 export const tournaments = {
   getAll: () => api.get('/tournois/'),
   getById: (id: string) => api.get(`/tournois/${id}/`),
-  create: (data: any) => api.post('/tournois/', data),
-  update: (id: string, data: any) => api.put(`/tournois/${id}/`, data),
+  // Using Record<string, unknown> is safer than any. Ideally, define specific types.
+  create: (data: Record<string, unknown>) => api.post('/tournois/', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/tournois/${id}/`, data),
   delete: (id: string) => api.delete(`/tournois/${id}/`),
 };
 
 export const teams = {
   getAll: () => api.get('/equipes/'),
   getById: (id: string) => api.get(`/equipes/${id}/`),
-  create: (data: any) => api.post('/equipes/', data),
-  update: (id: string, data: any) => api.put(`/equipes/${id}/`, data),
+  create: (data: Record<string, unknown>) => api.post('/equipes/', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/equipes/${id}/`, data),
   delete: (id: string) => api.delete(`/equipes/${id}/`),
 };
 
 export const matches = {
   getAll: () => api.get('/rencontres/'),
   getById: (id: string) => api.get(`/rencontres/${id}/`),
-  create: (data: any) => api.post('/rencontres/', data),
-  update: (id: string, data: any) => api.put(`/rencontres/${id}/`, data),
+  create: (data: Record<string, unknown>) => api.post('/rencontres/', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/rencontres/${id}/`, data),
   delete: (id: string) => api.delete(`/rencontres/${id}/`),
 };
 

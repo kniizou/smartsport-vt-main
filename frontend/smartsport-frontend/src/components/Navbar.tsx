@@ -1,18 +1,37 @@
 
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Menu, X, LogIn, User, Gamepad, Trophy } from "lucide-react";
+import { Search, Menu, X, LogIn, User, Gamepad, Trophy, LogOut, UserCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout, isLoading } = useAuth(); // Use auth context
+  const navigate = useNavigate();
   const location = useLocation();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  const handleLogout = () => {
+    logout();
+    toggleMenu(); // Close menu if open
+    navigate('/'); // Redirect to home after logout
+  };
   
   const isActive = (path: string) => location.pathname === path;
+
+  if (isLoading) {
+    return ( // Or a more sophisticated loading skeleton for the navbar
+      <nav className="sticky top-0 z-50 w-full border-b border-border/50 backdrop-blur-xl bg-background/80">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <div>Loading...</div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/50 backdrop-blur-xl bg-background/80">
@@ -73,16 +92,31 @@ const Navbar = () => {
               className="w-48 pl-10 pr-4 py-2 bg-secondary/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
             />
           </div>
-          <Link to="/login">
-            <Button variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:border-accent">
-              <LogIn className="mr-2 h-4 w-4" /> Se connecter
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button className="esports-gradient shadow-lg shadow-esports-purple/20">
-              <User className="mr-2 h-4 w-4" /> S'inscrire
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link to="/profile">
+                <Button variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:border-accent">
+                  <UserCircle className="mr-2 h-4 w-4" /> Profil ({user?.first_name || user?.email})
+                </Button>
+              </Link>
+              <Button onClick={handleLogout} className="esports-gradient shadow-lg shadow-esports-purple/20">
+                <LogOut className="mr-2 h-4 w-4" /> Se déconnecter
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:border-accent">
+                  <LogIn className="mr-2 h-4 w-4" /> Se connecter
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button className="esports-gradient shadow-lg shadow-esports-purple/20">
+                  <User className="mr-2 h-4 w-4" /> S'inscrire
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Navigation Toggle */}
@@ -129,16 +163,31 @@ const Navbar = () => {
               <Trophy className="mr-2 h-4 w-4" /> Classement
             </Link>
             <div className="flex flex-col space-y-3 pt-3 border-t border-border">
-              <Link to="/login" onClick={toggleMenu}>
-                <Button variant="outline" className="justify-start border-accent text-accent hover:bg-accent/10 w-full">
-                  <LogIn className="mr-2 h-4 w-4" /> Se connecter
-                </Button>
-              </Link>
-              <Link to="/register" onClick={toggleMenu}>
-                <Button className="justify-start esports-gradient w-full">
-                  <User className="mr-2 h-4 w-4" /> S'inscrire
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link to="/profile" onClick={toggleMenu}>
+                    <Button variant="outline" className="justify-start border-accent text-accent hover:bg-accent/10 w-full">
+                      <UserCircle className="mr-2 h-4 w-4" /> Profil ({user?.first_name || user?.email})
+                    </Button>
+                  </Link>
+                  <Button onClick={handleLogout} className="justify-start esports-gradient w-full">
+                    <LogOut className="mr-2 h-4 w-4" /> Se déconnecter
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" onClick={toggleMenu}>
+                    <Button variant="outline" className="justify-start border-accent text-accent hover:bg-accent/10 w-full">
+                      <LogIn className="mr-2 h-4 w-4" /> Se connecter
+                    </Button>
+                  </Link>
+                  <Link to="/register" onClick={toggleMenu}>
+                    <Button className="justify-start esports-gradient w-full">
+                      <User className="mr-2 h-4 w-4" /> S'inscrire
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

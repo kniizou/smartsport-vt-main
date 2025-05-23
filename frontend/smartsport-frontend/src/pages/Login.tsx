@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { LogIn, Mail, Eye, EyeOff, Lock } from "lucide-react";
-import { auth } from "@/lib/api";
+import { auth as apiAuth } from "@/lib/api"; // Renamed to avoid conflict
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login: contextLogin, isAuthenticated } = useAuth(); // Get login from context
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,10 +19,10 @@ const Login = () => {
 
   // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
-    if (auth.isAuthenticated()) {
+    if (isAuthenticated) { // Use isAuthenticated from context
       navigate('/');
     }
-  }, [navigate]);
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,21 +30,47 @@ const Login = () => {
     try {
       setIsLoading(true);
       // Connexion avec notre API Django
-      const data = await auth.login(email, password);
-      toast.success("Connexion réussie!");
-      navigate("/"); // Redirection vers la page d'accueil
-    } catch (error: any) {
-      console.error("Erreur:", error);
-      if (error.customMessage) {
-        setErrorMessage(error.customMessage);
-        toast.error(error.customMessage);
-      } else if (error.response?.status === 401) {
-        setErrorMessage("Email ou mot de passe incorrect");
-        toast.error("Email ou mot de passe incorrect");
+      const response = await apiAuth.login(email, password); // Use renamed apiAuth
+      // Assuming response contains { user: User, token: string }
+      // Adjust based on your actual API response structure from backend/tournois/views.py LoginAPI
+      if (response && response.user && response.token) {
+        contextLogin(response.user, response.token); // Call context login
+        toast.success("Connexion réussie!");
+        navigate("/"); // Redirection vers la page d'accueil
       } else {
-        setErrorMessage("Une erreur inattendue s'est produite");
-        toast.error("Une erreur inattendue s'est produite");
+        // Handle cases where API response might not be as expected, though backend should ensure it
+        throw new Error("Réponse de connexion invalide de l'API");
       }
+    } catch (e: unknown) {
+      console.error("Erreur de connexion:", e);
+      let message = "Une erreur inattendue s'est produite";
+      if (typeof e === 'string') {
+        message = e;
+      } else if (e instanceof Error) {
+        message = e.message;
+        // More robust check for Axios-like error or custom error structure
+        interface ApiError extends Error {
+          customMessage?: string;
+          response?: {
+            status?: number;
+            data?: { error?: string; detail?: string; /* other potential error fields */ };
+          };
+        }
+        const error = e as ApiError;
+        if (error.customMessage) {
+          message = error.customMessage;
+        } else if (error.response?.status === 401) {
+          message = error.response.data?.error || error.response.data?.detail || "Email ou mot de passe incorrect";
+        } else if (error.response?.status === 404) {
+          message = error.response.data?.error || error.response.data?.detail || "Utilisateur non trouvé";
+        } else if (error.response?.data?.error) {
+          message = error.response.data.error;
+        } else if (error.response?.data?.detail) {
+          message = error.response.data.detail;
+        }
+      }
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

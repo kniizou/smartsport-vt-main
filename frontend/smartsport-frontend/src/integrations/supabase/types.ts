@@ -122,3 +122,13 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+// Add a User type that matches your Django UserSerializer
+export type User = {
+  id: number;
+  email: string;
+  first_name?: string; // Optional as it might not always be present
+  last_name?: string;  // Optional
+  role: string; // Consider using a more specific string literal type if roles are fixed
+  // Add any other fields that your UserSerializer might return
+};
