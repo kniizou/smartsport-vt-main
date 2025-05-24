@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Lock, Mail, Eye, EyeOff, UserPlus, Check } from "lucide-react";
+import { User, Lock, Mail, Eye, EyeOff, UserPlus, Check, Briefcase } from "lucide-react"; // Ajout de Briefcase pour le rôle
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importer Select
 // import { supabase } from "@/integrations/supabase/client"; // Remove Supabase
 import { auth as apiAuth } from "@/lib/api"; // Import your Django API auth
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState("joueur"); // État pour le rôle, défaut à 'joueur'
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -37,9 +39,9 @@ const Register = () => {
         username,
         email,
         password,
-        role: 'joueur', // Default role, or get from a form field if applicable
-        // first_name: "", // Add if you have these fields in the form
-        // last_name: "",  // Add if you have these fields in the form
+        role: role, // Utiliser l'état du rôle
+        // first_name: "", // Ajouter si vous avez ces champs dans le formulaire
+        // last_name: "",  // Ajouter si vous avez ces champs dans le formulaire
       };
       const response = await apiAuth.register(userData);
 
@@ -221,6 +223,22 @@ const Register = () => {
                   {!passwordsMatch && confirmPassword !== "" && (
                     <p className="text-xs text-red-500 mt-1">Les mots de passe ne correspondent pas</p>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Je suis un</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger className="w-full pl-10">
+                      <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <SelectValue placeholder="Sélectionner un rôle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="joueur">Joueur</SelectItem>
+                      <SelectItem value="organisateur">Organisateur</SelectItem>
+                      {/* <SelectItem value="arbitre">Arbitre</SelectItem> */}
+                      {/* Ne pas permettre de s'inscrire en tant qu'admin ici */}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Password requirements */}

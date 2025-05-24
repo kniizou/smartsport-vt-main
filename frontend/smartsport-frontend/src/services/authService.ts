@@ -15,8 +15,8 @@ export const login = async (email: string, password: string): Promise<LoginRespo
     const response = await axios.post('/api/auth/login/', { email, password });
     const { token, user } = response.data;
     
-    // Store the token in localStorage
-    localStorage.setItem('token', token);
+    // Store the token in localStorage, using the same key as the api interceptor
+    localStorage.setItem('authToken', token);
     
     return { token, user };
   } catch (error) {

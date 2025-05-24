@@ -74,7 +74,7 @@ class UtilisateurViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         user.is_active = not user.is_active
         user.save()
-        
+
         return Response({
             'status': 'success',
             'message': f"L'utilisateur a été {'activé' if user.is_active else 'désactivé'}",
@@ -90,7 +90,7 @@ class UtilisateurViewSet(viewsets.ModelViewSet):
             user.organisateur_profile.delete()
         elif hasattr(user, 'arbitre_profile'):
             user.arbitre_profile.delete()
-            
+
         # Then delete the user
         user.delete()
         return Response({
@@ -102,7 +102,8 @@ class UtilisateurViewSet(viewsets.ModelViewSet):
 class JoueurViewSet(viewsets.ModelViewSet):
     queryset = Joueur.objects.all()
     serializer_class = JoueurSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    # Modifié pour restreindre l'accès aux administrateurs
+    permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['niveau']
     search_fields = ['utilisateur__first_name',
@@ -174,13 +175,51 @@ class TournoiViewSet(viewsets.ModelViewSet):
     """
     queryset = Tournoi.objects.all()
     serializer_class = TournoiSerializer
+    # Seuls les organisateurs peuvent créer/modifier/supprimer
     permission_classes = [IsOrganisateurOrReadOnly]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            # Ou Tournoi.objects.filter(statut='planifie') pour les non connectés
+            return Tournoi.objects.none()
+
+        if user.role == 'administrateur':
+            return Tournoi.objects.all()
+        elif user.role == 'organisateur':
+            # S'assurer que l'organisateur a un profil Organisateur lié
+            try:
+                # Accès direct si la relation est nommée 'organisateur'
+                organisateur_profile = user.organisateur
+                return Tournoi.objects.filter(organisateur=organisateur_profile)
+            except Organisateur.DoesNotExist:  # ou user.organisateur.RelatedObjectDoesNotExist
+                # Si l'utilisateur avec role='organisateur' n'a pas de profil Organisateur lié
+                return Tournoi.objects.none()
+        # Pour les joueurs ou autres rôles, on pourrait afficher les tournois planifiés/en cours
+        # ou simplement aucun s'ils ne doivent pas voir de liste "mes tournois"
+        # Exemple pour les autres rôles
+        return Tournoi.objects.filter(statut__in=['planifie', 'en_cours'])
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['type', 'statut', 'organisateur']
     search_fields = ['nom', 'description']
 
     def perform_create(self, serializer):
-        serializer.save(organisateur=self.request.user.organisateur_profile)
+        # S'assurer que l'utilisateur est un organisateur et a un profil
+        if self.request.user.role == 'organisateur':
+            try:
+                organisateur_profile = self.request.user.organisateur
+                serializer.save(organisateur=organisateur_profile)
+            except Organisateur.DoesNotExist:  # ou self.request.user.organisateur.RelatedObjectDoesNotExist
+                # Gérer le cas où le profil organisateur n'existe pas
+                # Ceci ne devrait pas arriver si la logique de création d'utilisateur est correcte
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied(
+                    "Profil organisateur non trouvé pour cet utilisateur.")
+        else:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(
+                "Seul un organisateur peut créer un tournoi.")
 
     @swagger_auto_schema(
         operation_description="Inscrit une équipe à un tournoi",
@@ -240,16 +279,16 @@ class TournoiViewSet(viewsets.ModelViewSet):
         """
         tournoi = self.get_object()
         nouveau_statut = request.data.get('statut')
-        
+
         if nouveau_statut not in dict(Tournoi.STATUT_CHOICES):
             return Response(
                 {"error": "Statut invalide"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
+
         tournoi.statut = nouveau_statut
         tournoi.save()
-        
+
         return Response(
             {"message": f"Statut du tournoi changé en {nouveau_statut}"},
             status=status.HTTP_200_OK
@@ -262,9 +301,10 @@ class TournoiViewSet(viewsets.ModelViewSet):
         """
         tournoi = self.get_object()
         equipes = tournoi.rencontre_set.values('equipe1').distinct().count()
-        rencontres_terminees = tournoi.rencontre_set.filter(statut='termine').count()
+        rencontres_terminees = tournoi.rencontre_set.filter(
+            statut='termine').count()
         rencontres_total = tournoi.rencontre_set.count()
-        
+
         return Response({
             'nombre_equipes': equipes,
             'rencontres_terminees': rencontres_terminees,
@@ -278,32 +318,32 @@ class TournoiViewSet(viewsets.ModelViewSet):
         Génère automatiquement les rencontres pour un tournoi
         """
         tournoi = self.get_object()
-        
+
         if tournoi.statut != 'planifie':
             return Response(
                 {"error": "Les rencontres ne peuvent être générées que pour un tournoi planifié"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
+
         equipes = list(Equipe.objects.filter(
             id__in=tournoi.rencontre_set.values('equipe1')
         ))
-        
+
         if len(equipes) < 2:
             return Response(
                 {"error": "Il faut au moins 2 équipes pour générer les rencontres"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
+
         # Supprimer les anciennes rencontres
         tournoi.rencontre_set.all().delete()
-        
+
         # Générer les nouvelles rencontres selon le type de tournoi
         if tournoi.type == 'elimination':
             # Tournoi à élimination directe
             from random import shuffle
             shuffle(equipes)
-            
+
             for i in range(0, len(equipes)-1, 2):
                 Rencontre.objects.create(
                     tournoi=tournoi,
@@ -311,7 +351,7 @@ class TournoiViewSet(viewsets.ModelViewSet):
                     equipe2=equipes[i+1],
                     statut='planifie'
                 )
-                
+
         elif tournoi.type == 'round-robin':
             # Tournoi tous contre tous
             for i in range(len(equipes)):
@@ -322,10 +362,10 @@ class TournoiViewSet(viewsets.ModelViewSet):
                         equipe2=equipes[j],
                         statut='planifie'
                     )
-        
+
         tournoi.statut = 'en_cours'
         tournoi.save()
-        
+
         return Response(
             {"message": "Rencontres générées avec succès"},
             status=status.HTTP_201_CREATED
@@ -471,10 +511,12 @@ class DashboardAdminView(APIView):
         tournois_actifs = Tournoi.objects.filter(statut='en_cours')[:5]
 
         # Récupérer les derniers joueurs inscrits
-        derniers_joueurs = Joueur.objects.order_by('-utilisateur__date_inscription')[:5]
+        derniers_joueurs = Joueur.objects.order_by(
+            '-utilisateur__date_inscription')[:5]
 
         # Récupérer les derniers organisateurs
-        derniers_organisateurs = Organisateur.objects.order_by('-utilisateur__date_inscription')[:5]
+        derniers_organisateurs = Organisateur.objects.order_by(
+            '-utilisateur__date_inscription')[:5]
 
         # Récupérer les derniers paiements
         derniers_paiements = Paiement.objects.order_by('-date_paiement')[:5]

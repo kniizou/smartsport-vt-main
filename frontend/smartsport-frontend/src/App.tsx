@@ -21,6 +21,9 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import ProfilePage from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
+import OrganisateurDashboard from "./pages/OrganisateurDashboard";
+import CreerTournoiPage from "./pages/CreerTournoiPage";
+import ModifierTournoiPage from "./pages/ModifierTournoiPage"; // Importer la page de modification
 
 const queryClient = new QueryClient();
 
@@ -30,6 +33,22 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (!user || user.role !== 'administrateur') {
     return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Protected Route component for organizer-only access
+const OrganisateurRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth(); // Added isLoading to prevent premature redirect
+
+  if (isLoading) {
+    return <div>Chargement...</div>; // Ou un spinner/skeleton
+  }
+  
+  if (!user || user.role !== 'organisateur') {
+    // Peut-être rediriger vers la page de connexion ou une page "non autorisé"
+    return <Navigate to="/login" replace />;
   }
   
   return <>{children}</>;
@@ -65,7 +84,31 @@ const App = () => (
                 <AdminRoute>
                   <AdminDashboard />
                 </AdminRoute>
-              } 
+              }
+            />
+            <Route
+              path="/organisateur/dashboard"
+              element={
+                <OrganisateurRoute>
+                  <OrganisateurDashboard />
+                </OrganisateurRoute>
+              }
+            />
+            <Route
+              path="/organisateur/tournois/nouveau"
+              element={
+                <OrganisateurRoute>
+                  <CreerTournoiPage />
+                </OrganisateurRoute>
+              }
+            />
+            <Route
+              path="/organisateur/tournois/modifier/:id"
+              element={
+                <OrganisateurRoute>
+                  <ModifierTournoiPage />
+                </OrganisateurRoute>
+              }
             />
             <Route path="*" element={<NotFound />} />
           </Routes>

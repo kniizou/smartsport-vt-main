@@ -48,12 +48,14 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'first_name', 'last_name', 'role')
+        fields = ('username', 'email', 'password',
+                  'first_name', 'last_name', 'role')
 
     def validate_email(self, value):
         print("Validation de l'email (permissive):", value)
         if '@' not in value:
-            raise serializers.ValidationError("Format d'email invalide (doit contenir un @)")
+            raise serializers.ValidationError(
+                "Format d'email invalide (doit contenir un @)")
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Cet email est déjà utilisé")
         return value
@@ -61,11 +63,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_username(self, value):
         print("Validation du username:", value)
         if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("Ce nom d'utilisateur est déjà pris")
+            raise serializers.ValidationError(
+                "Ce nom d'utilisateur est déjà pris")
         return value
 
     def create(self, validated_data):
         print("Création de l'utilisateur avec les données:", validated_data)
+        role = validated_data.get('role', 'joueur')
         try:
             user = User.objects.create_user(
                 username=validated_data['username'],
@@ -73,19 +77,39 @@ class RegisterSerializer(serializers.ModelSerializer):
                 password=validated_data['password'],
                 first_name=validated_data.get('first_name', ''),
                 last_name=validated_data.get('last_name', ''),
-                role=validated_data.get('role', 'joueur')
+                role=role
             )
-            print("Utilisateur créé avec succès:", user.email)
+            print(
+                f"Utilisateur {user.email} créé avec succès avec le rôle {role}.")
+
+            # Créer le profil associé en fonction du rôle
+            if role == 'joueur':
+                Joueur.objects.create(utilisateur=user)
+                print(f"Profil Joueur créé pour {user.email}")
+            elif role == 'organisateur':
+                # Pour Organisateur, nom_organisation est requis par le modèle.
+                # Nous allons utiliser le username comme placeholder ou le rendre optionnel/modifiable plus tard.
+                Organisateur.objects.create(
+                    utilisateur=user, nom_organisation=f"Organisation de {user.username}")
+                print(f"Profil Organisateur créé pour {user.email}")
+            elif role == 'arbitre':
+                Arbitre.objects.create(utilisateur=user)
+                print(f"Profil Arbitre créé pour {user.email}")
+            # Ne pas créer de profil Administrateur ici, cela se fait via create_superuser ou une commande dédiée.
+
             return user
         except Exception as e:
-            print("Erreur lors de la création:", str(e))
+            print("Erreur lors de la création de l'utilisateur ou du profil:", str(e))
+            # Si l'utilisateur a été créé mais pas le profil, il faudrait potentiellement le supprimer pour éviter un état incohérent.
+            # Pour l'instant, on lève l'exception.
             raise
 
 
 class UtilisateurSerializer(serializers.ModelSerializer):
     class Meta:
         model = Utilisateur
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'telephone', 'role', 'date_inscription']
+        fields = ['id', 'username', 'email', 'first_name',
+                  'last_name', 'telephone', 'role', 'date_inscription']
         read_only_fields = ['date_inscription']
 
 
@@ -94,11 +118,43 @@ class JoueurSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Joueur
+        # L'ID du Joueur est l'ID de son champ utilisateur (qui est la clé primaire)
+        # 'utilisateur' est déjà sérialisé et contient l'ID de l'utilisateur.
+        # Si le frontend s'attend à un champ 'id' au niveau racine de l'objet Joueur,
+        # nous devons l'ajouter explicitement.
+        fields = ['utilisateur', 'niveau', 'classement']
+        # Pour exposer l'ID de l'utilisateur comme l'ID du joueur directement:
+        # fields = ['id', 'utilisateur', 'niveau', 'classement']
+        # Et ajouter: id = serializers.IntegerField(source='utilisateur.id', read_only=True)
+        # Cependant, le frontend utilise déjà joueur.utilisateur.id pour les actions.
+        # Pour la key dans le map, il utilise joueur.id.
+        # Donc, il est mieux d'ajouter explicitement le champ id.
+
+
+class JoueurSerializer(serializers.ModelSerializer):  # Redéfinition pour clarté
+    utilisateur = UtilisateurSerializer(read_only=True)
+    id = serializers.IntegerField(
+        source='utilisateur.id', read_only=True)  # Ajout explicite de l'ID
+
+    class Meta:
+        model = Joueur
         fields = ['id', 'utilisateur', 'niveau', 'classement']
 
 
 class OrganisateurSerializer(serializers.ModelSerializer):
     utilisateur = UtilisateurSerializer(read_only=True)
+
+    class Meta:
+        model = Organisateur
+        fields = ['utilisateur', 'nom_organisation', 'description']
+        # Même logique que pour JoueurSerializer
+
+
+# Redéfinition pour clarté
+class OrganisateurSerializer(serializers.ModelSerializer):
+    utilisateur = UtilisateurSerializer(read_only=True)
+    id = serializers.IntegerField(
+        source='utilisateur.id', read_only=True)  # Ajout explicite de l'ID
 
     class Meta:
         model = Organisateur
@@ -116,7 +172,8 @@ class ArbitreSerializer(serializers.ModelSerializer):
 class PaiementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Paiement
-        fields = ['id', 'joueur', 'montant', 'date_paiement', 'methode', 'statut']
+        fields = ['id', 'joueur', 'montant',
+                  'date_paiement', 'methode', 'statut']
         read_only_fields = ['date_paiement']
 
 
@@ -171,7 +228,8 @@ class RencontreSerializer(serializers.ModelSerializer):
 class FAQSerializer(serializers.ModelSerializer):
     class Meta:
         model = FAQ
-        fields = ['id', 'question', 'answer', 'category', 'date_creation', 'date_modification', 'est_active', 'created_by']
+        fields = ['id', 'question', 'answer', 'category', 'date_creation',
+                  'date_modification', 'est_active', 'created_by']
         read_only_fields = ['date_creation', 'date_modification', 'created_by']
 
 
