@@ -29,7 +29,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import (
     Utilisateur, Joueur, Organisateur, Administrateur,
-    Arbitre, Paiement, Equipe, JoueurEquipe, Tournoi, Rencontre, FAQ
+    Arbitre, Paiement, Equipe, JoueurEquipe, Tournoi, Rencontre, FAQ, InscriptionTournoi
 )
 
 User = get_user_model()
@@ -242,3 +242,14 @@ class DashboardAdminSerializer(serializers.Serializer):
     derniers_joueurs = JoueurSerializer(many=True)
     derniers_organisateurs = OrganisateurSerializer(many=True)
     derniers_paiements = PaiementSerializer(many=True)
+
+
+class InscriptionTournoiSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InscriptionTournoi
+        fields = [
+            'id', 'tournoi', 'joueur', 'jeu', 'pseudo', 'niveau',
+            'experience', 'equipe', 'commentaire', 'statut',
+            'date_inscription'
+        ]
+        read_only_fields = ['joueur', 'statut', 'date_inscription']

@@ -121,10 +121,12 @@ export const auth = {
 export const tournaments = {
   getAll: () => api.get('/tournois/'),
   getById: (id: string) => api.get(`/tournois/${id}/`),
-  // Using Record<string, unknown> is safer than any. Ideally, define specific types.
   create: (data: Record<string, unknown>) => api.post('/tournois/', data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/tournois/${id}/`, data),
   delete: (id: string) => api.delete(`/tournois/${id}/`),
+  getMyTournaments: () => api.get('/tournois/mes_tournois/'),
+  register: (data: Record<string, unknown>) => 
+    api.post('/tournois/inscrire_joueur/', data),
 };
 
 export const teams = {

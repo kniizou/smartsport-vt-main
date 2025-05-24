@@ -346,3 +346,31 @@ class FAQ(models.Model):
 
     def __str__(self):
         return self.question
+
+
+class InscriptionTournoi(models.Model):
+    STATUT_CHOICES = [
+        ('en_attente', 'En attente'),
+        ('validee', 'Validée'),
+        ('refusee', 'Refusée'),
+    ]
+
+    tournoi = models.ForeignKey(Tournoi, on_delete=models.CASCADE)
+    joueur = models.ForeignKey(Joueur, on_delete=models.CASCADE)
+    jeu = models.CharField(max_length=100)
+    pseudo = models.CharField(max_length=100)
+    niveau = models.CharField(max_length=50)
+    experience = models.TextField()
+    equipe = models.ForeignKey(Equipe, on_delete=models.SET_NULL, null=True, blank=True)
+    commentaire = models.TextField(blank=True)
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='en_attente')
+    date_inscription = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'inscription_tournoi'
+        verbose_name = "Inscription au tournoi"
+        verbose_name_plural = "Inscriptions aux tournois"
+        unique_together = ['tournoi', 'joueur']
+
+    def __str__(self):
+        return f"{self.joueur.utilisateur.username} - {self.tournoi.nom}"

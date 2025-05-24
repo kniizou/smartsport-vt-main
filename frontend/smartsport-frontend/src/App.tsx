@@ -24,6 +24,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import OrganisateurDashboard from "./pages/OrganisateurDashboard";
 import CreerTournoiPage from "./pages/CreerTournoiPage";
 import ModifierTournoiPage from "./pages/ModifierTournoiPage"; // Importer la page de modification
+import InscriptionTournoi from "./pages/InscriptionTournoi";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,9 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/profile" element={<ProtectedRoute />}>
               <Route index element={<ProfilePage />} />
+            </Route>
+            <Route path="/inscription-tournoi" element={<ProtectedRoute />}>
+              <Route index element={<InscriptionTournoi />} />
             </Route>
             <Route 
               path="/admin/dashboard" 

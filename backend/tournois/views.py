@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import get_user_model, authenticate
 # Importez les modèles nécessaires
-from .models import Joueur, Organisateur, Arbitre, Utilisateur, Paiement, Equipe, JoueurEquipe, Tournoi, Rencontre, FAQ
+from .models import Joueur, Organisateur, Arbitre, Utilisateur, Paiement, Equipe, JoueurEquipe, Tournoi, Rencontre, FAQ, InscriptionTournoi
 from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from django_filters.rest_framework import DjangoFilterBackend
@@ -18,6 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import FAQSerializer
 from .serializers import DashboardAdminSerializer
 from rest_framework.permissions import IsAdminUser
+from django.utils import timezone
 User = get_user_model()
 
 
@@ -370,6 +371,105 @@ class TournoiViewSet(viewsets.ModelViewSet):
             {"message": "Rencontres générées avec succès"},
             status=status.HTTP_201_CREATED
         )
+
+    @action(detail=False, methods=['get'])
+    def mes_tournois(self, request):
+        """
+        Récupère les tournois auxquels l'utilisateur est inscrit
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Authentification requise"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Récupérer les inscriptions du joueur
+        inscriptions = InscriptionTournoi.objects.filter(joueur=request.user.joueur_profile)
+        
+        # Récupérer les tournois associés
+        tournois = [inscription.tournoi for inscription in inscriptions]
+
+        serializer = self.get_serializer(tournois, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def inscrire_joueur(self, request):
+        """
+        Inscrit un joueur à un tournoi
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Authentification requise"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if request.user.role != 'joueur':
+            return Response(
+                {"detail": "Seuls les joueurs peuvent s'inscrire à un tournoi"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Récupérer les données du formulaire
+        nom_tournoi = request.data.get('nom_tournoi')
+        jeu = request.data.get('jeu')
+        pseudo = request.data.get('pseudo')
+        niveau = request.data.get('niveau')
+        experience = request.data.get('experience')
+        equipe = request.data.get('equipe')
+        commentaire = request.data.get('commentaire')
+
+        if not all([nom_tournoi, jeu, pseudo, niveau, experience]):
+            return Response(
+                {"detail": "Tous les champs obligatoires doivent être remplis"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            joueur = request.user.joueur_profile
+            
+            # Créer ou récupérer l'équipe
+            equipe_obj = None
+            if equipe:
+                equipe_obj, created = Equipe.objects.get_or_create(
+                    nom=equipe,
+                    defaults={'organisateur': Organisateur.objects.first()}
+                )
+
+            # Créer le tournoi
+            tournoi = Tournoi.objects.create(
+                nom=nom_tournoi,
+                description=f"Tournoi de {jeu}",
+                type='elimination',
+                date_debut=timezone.now(),
+                date_fin=timezone.now() + timezone.timedelta(days=7),
+                prix_inscription=0,
+                statut='planifie',
+                organisateur=Organisateur.objects.first()
+            )
+
+            # Créer l'inscription
+            inscription = InscriptionTournoi.objects.create(
+                tournoi=tournoi,
+                joueur=joueur,
+                jeu=jeu,
+                pseudo=pseudo,
+                niveau=niveau,
+                experience=experience,
+                equipe=equipe_obj,
+                commentaire=commentaire,
+                statut='en_attente'
+            )
+
+            return Response({
+                "message": "Inscription au tournoi réussie",
+                "inscription_id": inscription.id
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class RencontreViewSet(viewsets.ModelViewSet):
