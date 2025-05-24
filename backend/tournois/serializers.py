@@ -173,3 +173,14 @@ class FAQSerializer(serializers.ModelSerializer):
         model = FAQ
         fields = ['id', 'question', 'answer', 'category', 'date_creation', 'date_modification', 'est_active', 'created_by']
         read_only_fields = ['date_creation', 'date_modification', 'created_by']
+
+
+class DashboardAdminSerializer(serializers.Serializer):
+    total_joueurs = serializers.IntegerField()
+    total_organisateurs = serializers.IntegerField()
+    total_tournois = serializers.IntegerField()
+    total_equipes = serializers.IntegerField()
+    tournois_actifs = TournoiSerializer(many=True)
+    derniers_joueurs = JoueurSerializer(many=True)
+    derniers_organisateurs = OrganisateurSerializer(many=True)
+    derniers_paiements = PaiementSerializer(many=True)

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'drf_yasg',
+    'django_filters',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -86,7 +87,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'smartsport_db',
         'USER': 'postgres',
-        'PASSWORD': 'kenza',
+        'PASSWORD': 'Bujujan',
         'HOST': 'localhost',
         'PORT': '5432',
     }
