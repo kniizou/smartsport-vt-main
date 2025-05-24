@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model, authenticate
 # Importez les modèles nécessaires
 from .models import Joueur, Organisateur, Arbitre, Utilisateur, Paiement, Equipe, JoueurEquipe, Tournoi, Rencontre, FAQ
 from rest_framework import viewsets, permissions, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from django_filters.rest_framework import DjangoFilterBackend
 from .serializers import (
     UtilisateurSerializer, JoueurSerializer, OrganisateurSerializer,
@@ -16,6 +16,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import FAQSerializer
+from .serializers import DashboardAdminSerializer
+from rest_framework.permissions import IsAdminUser
 User = get_user_model()
 
 
@@ -63,6 +65,38 @@ class UtilisateurViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['role']
     search_fields = ['first_name', 'last_name', 'email']
+
+    @action(detail=True, methods=['post'])
+    def toggle_active(self, request, pk=None):
+        """
+        Active/désactive un utilisateur
+        """
+        user = self.get_object()
+        user.is_active = not user.is_active
+        user.save()
+        
+        return Response({
+            'status': 'success',
+            'message': f"L'utilisateur a été {'activé' if user.is_active else 'désactivé'}",
+            'is_active': user.is_active
+        })
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        # Delete associated profile first
+        if hasattr(user, 'joueur_profile'):
+            user.joueur_profile.delete()
+        elif hasattr(user, 'organisateur_profile'):
+            user.organisateur_profile.delete()
+        elif hasattr(user, 'arbitre_profile'):
+            user.arbitre_profile.delete()
+            
+        # Then delete the user
+        user.delete()
+        return Response({
+            'status': 'success',
+            'message': "L'utilisateur a été supprimé"
+        }, status=status.HTTP_200_OK)
 
 
 class JoueurViewSet(viewsets.ModelViewSet):
@@ -199,6 +233,104 @@ class TournoiViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=True, methods=['post'])
+    def changer_statut(self, request, pk=None):
+        """
+        Change le statut d'un tournoi
+        """
+        tournoi = self.get_object()
+        nouveau_statut = request.data.get('statut')
+        
+        if nouveau_statut not in dict(Tournoi.STATUT_CHOICES):
+            return Response(
+                {"error": "Statut invalide"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        tournoi.statut = nouveau_statut
+        tournoi.save()
+        
+        return Response(
+            {"message": f"Statut du tournoi changé en {nouveau_statut}"},
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['get'])
+    def statistiques(self, request, pk=None):
+        """
+        Retourne les statistiques du tournoi
+        """
+        tournoi = self.get_object()
+        equipes = tournoi.rencontre_set.values('equipe1').distinct().count()
+        rencontres_terminees = tournoi.rencontre_set.filter(statut='termine').count()
+        rencontres_total = tournoi.rencontre_set.count()
+        
+        return Response({
+            'nombre_equipes': equipes,
+            'rencontres_terminees': rencontres_terminees,
+            'rencontres_total': rencontres_total,
+            'progression': f"{rencontres_terminees}/{rencontres_total}"
+        })
+
+    @action(detail=True, methods=['post'])
+    def generer_rencontres(self, request, pk=None):
+        """
+        Génère automatiquement les rencontres pour un tournoi
+        """
+        tournoi = self.get_object()
+        
+        if tournoi.statut != 'planifie':
+            return Response(
+                {"error": "Les rencontres ne peuvent être générées que pour un tournoi planifié"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        equipes = list(Equipe.objects.filter(
+            id__in=tournoi.rencontre_set.values('equipe1')
+        ))
+        
+        if len(equipes) < 2:
+            return Response(
+                {"error": "Il faut au moins 2 équipes pour générer les rencontres"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Supprimer les anciennes rencontres
+        tournoi.rencontre_set.all().delete()
+        
+        # Générer les nouvelles rencontres selon le type de tournoi
+        if tournoi.type == 'elimination':
+            # Tournoi à élimination directe
+            from random import shuffle
+            shuffle(equipes)
+            
+            for i in range(0, len(equipes)-1, 2):
+                Rencontre.objects.create(
+                    tournoi=tournoi,
+                    equipe1=equipes[i],
+                    equipe2=equipes[i+1],
+                    statut='planifie'
+                )
+                
+        elif tournoi.type == 'round-robin':
+            # Tournoi tous contre tous
+            for i in range(len(equipes)):
+                for j in range(i+1, len(equipes)):
+                    Rencontre.objects.create(
+                        tournoi=tournoi,
+                        equipe1=equipes[i],
+                        equipe2=equipes[j],
+                        statut='planifie'
+                    )
+        
+        tournoi.statut = 'en_cours'
+        tournoi.save()
+        
+        return Response(
+            {"message": "Rencontres générées avec succès"},
+            status=status.HTTP_201_CREATED
+        )
+
 
 class RencontreViewSet(viewsets.ModelViewSet):
     """
@@ -323,3 +455,40 @@ class FAQViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+
+class DashboardAdminView(APIView):
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get(self, request):
+        # Récupérer les statistiques
+        total_joueurs = Joueur.objects.count()
+        total_organisateurs = Organisateur.objects.count()
+        total_tournois = Tournoi.objects.count()
+        total_equipes = Equipe.objects.count()
+
+        # Récupérer les tournois actifs
+        tournois_actifs = Tournoi.objects.filter(statut='en_cours')[:5]
+
+        # Récupérer les derniers joueurs inscrits
+        derniers_joueurs = Joueur.objects.order_by('-utilisateur__date_inscription')[:5]
+
+        # Récupérer les derniers organisateurs
+        derniers_organisateurs = Organisateur.objects.order_by('-utilisateur__date_inscription')[:5]
+
+        # Récupérer les derniers paiements
+        derniers_paiements = Paiement.objects.order_by('-date_paiement')[:5]
+
+        data = {
+            'total_joueurs': total_joueurs,
+            'total_organisateurs': total_organisateurs,
+            'total_tournois': total_tournois,
+            'total_equipes': total_equipes,
+            'tournois_actifs': TournoiSerializer(tournois_actifs, many=True).data,
+            'derniers_joueurs': JoueurSerializer(derniers_joueurs, many=True).data,
+            'derniers_organisateurs': OrganisateurSerializer(derniers_organisateurs, many=True).data,
+            'derniers_paiements': PaiementSerializer(derniers_paiements, many=True).data,
+        }
+
+        serializer = DashboardAdminSerializer(data)
+        return Response(serializer.data)
