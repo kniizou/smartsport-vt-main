@@ -87,7 +87,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'smartsport_db',
         'USER': 'postgres',
-        'PASSWORD': 'Bujujan',
+        'PASSWORD': 'kenza',
         'HOST': 'localhost',
         'PORT': '5432',
     }
