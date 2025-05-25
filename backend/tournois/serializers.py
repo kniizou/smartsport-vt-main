@@ -79,29 +79,33 @@ class RegisterSerializer(serializers.ModelSerializer):
                 last_name=validated_data.get('last_name', ''),
                 role=role
             )
-            print(
-                f"Utilisateur {user.email} créé avec succès avec le rôle {role}.")
+            print(f"Utilisateur {user.email} créé avec succès avec le rôle {role}.")
 
             # Créer le profil associé en fonction du rôle
             if role == 'joueur':
                 Joueur.objects.create(utilisateur=user)
                 print(f"Profil Joueur créé pour {user.email}")
             elif role == 'organisateur':
-                # Pour Organisateur, nom_organisation est requis par le modèle.
-                # Nous allons utiliser le username comme placeholder ou le rendre optionnel/modifiable plus tard.
-                Organisateur.objects.create(
-                    utilisateur=user, nom_organisation=f"Organisation de {user.username}")
-                print(f"Profil Organisateur créé pour {user.email}")
+                try:
+                    # Pour Organisateur, nom_organisation est requis par le modèle
+                    nom_org = f"Organisation de {user.username}"
+                    Organisateur.objects.create(
+                        utilisateur=user,
+                        nom_organisation=nom_org
+                    )
+                    print(f"Profil Organisateur créé pour {user.email} avec le nom {nom_org}")
+                except Exception as e:
+                    print(f"Erreur lors de la création du profil organisateur: {str(e)}")
+                    # Supprimer l'utilisateur si le profil n'a pas pu être créé
+                    user.delete()
+                    raise
             elif role == 'arbitre':
                 Arbitre.objects.create(utilisateur=user)
                 print(f"Profil Arbitre créé pour {user.email}")
-            # Ne pas créer de profil Administrateur ici, cela se fait via create_superuser ou une commande dédiée.
 
             return user
         except Exception as e:
             print("Erreur lors de la création de l'utilisateur ou du profil:", str(e))
-            # Si l'utilisateur a été créé mais pas le profil, il faudrait potentiellement le supprimer pour éviter un état incohérent.
-            # Pour l'instant, on lève l'exception.
             raise
 
 
@@ -199,6 +203,7 @@ class TournoiSerializer(serializers.ModelSerializer):
             'date_debut', 'date_fin', 'prix_inscription',
             'statut', 'organisateur'
         ]
+        read_only_fields = ['organisateur']
 
     def validate(self, data):
         if data['date_fin'] <= data['date_debut']:

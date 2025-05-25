@@ -372,7 +372,9 @@ class TournoiViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def mes_tournois(self, request):
         """
-        Récupère les tournois auxquels l'utilisateur est inscrit
+        Récupère les tournois selon le rôle de l'utilisateur :
+        - Pour les joueurs : les tournois auxquels ils sont inscrits
+        - Pour les organisateurs : les tournois qu'ils ont créés
         """
         if not request.user.is_authenticated:
             return Response(
@@ -380,14 +382,34 @@ class TournoiViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Récupérer les inscriptions du joueur
-        inscriptions = InscriptionTournoi.objects.filter(joueur=request.user.joueur_profile)
-        
-        # Récupérer les tournois associés
-        tournois = [inscription.tournoi for inscription in inscriptions]
-
-        serializer = self.get_serializer(tournois, many=True)
-        return Response(serializer.data)
+        if request.user.role == 'organisateur':
+            try:
+                organisateur_profile = request.user.organisateur
+                tournois = Tournoi.objects.filter(organisateur=organisateur_profile)
+                serializer = self.get_serializer(tournois, many=True)
+                return Response(serializer.data)
+            except Organisateur.DoesNotExist:
+                return Response(
+                    {"detail": "Profil organisateur non trouvé"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        elif request.user.role == 'joueur':
+            try:
+                joueur = Joueur.objects.get(utilisateur=request.user)
+                inscriptions = InscriptionTournoi.objects.filter(joueur=joueur)
+                tournois = [inscription.tournoi for inscription in inscriptions]
+                serializer = self.get_serializer(tournois, many=True)
+                return Response(serializer.data)
+            except Joueur.DoesNotExist:
+                return Response(
+                    {"detail": "Profil joueur non trouvé"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            return Response(
+                {"detail": "Accès non autorisé"},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
     @action(detail=False, methods=['post'])
     def inscrire_joueur(self, request):
@@ -547,9 +569,12 @@ class RegisterAPI(APIView):
                     "message": "Utilisateur créé avec succès"
                 }, status=status.HTTP_201_CREATED)
             except Exception as e:
-                print("Erreur lors de la création:", str(e))  # Log des erreurs
+                import traceback
+                print("Erreur détaillée lors de la création:", str(e))
+                print("Traceback complet:", traceback.format_exc())
                 return Response({
-                    "error": str(e)
+                    "error": str(e),
+                    "detail": "Une erreur est survenue lors de la création de l'utilisateur"
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         # Log des erreurs de validation
         print("Erreurs de validation:", serializer.errors)

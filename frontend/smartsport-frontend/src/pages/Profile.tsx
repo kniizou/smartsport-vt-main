@@ -57,6 +57,10 @@ const ProfilePage: React.FC = () => {
     navigate('/');
   };
 
+  const handleCreateTournament = () => {
+    navigate('/organisateur/tournois/nouveau');
+  };
+
   const handleRegisterTournament = () => {
     navigate('/inscription-tournoi');
   };
@@ -77,10 +81,18 @@ const ProfilePage: React.FC = () => {
 
         <div className="bg-card p-6 rounded-lg shadow-md mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Mes tournois inscrits</h2>
-            <Button onClick={handleRegisterTournament} className="esports-gradient">
-              S'inscrire à un tournoi
-            </Button>
+            <h2 className="text-xl font-semibold">
+              {user.role === 'organisateur' ? 'Mes tournois' : 'Mes tournois inscrits'}
+            </h2>
+            {user.role === 'organisateur' ? (
+              <Button onClick={handleCreateTournament} className="esports-gradient">
+                Créer un tournoi
+              </Button>
+            ) : (
+              <Button onClick={handleRegisterTournament} className="esports-gradient">
+                S'inscrire à un tournoi
+              </Button>
+            )}
           </div>
           
           {isLoading ? (
@@ -104,7 +116,11 @@ const ProfilePage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <p>Vous n'êtes inscrit à aucun tournoi pour le moment.</p>
+            <p>
+              {user.role === 'organisateur' 
+                ? "Vous n'avez pas encore créé de tournoi."
+                : "Vous n'êtes inscrit à aucun tournoi pour le moment."}
+            </p>
           )}
         </div>
 
