@@ -38,9 +38,11 @@ const JEUX_DISPONIBLES = [
 const InscriptionTournoi = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [selectedTournament, setSelectedTournament] = useState<number | null>(null);
   const [selectedGame, setSelectedGame] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
-    nom_tournoi: '',
     pseudo: '',
     niveau: '',
     experience: '',
@@ -48,24 +50,49 @@ const InscriptionTournoi = () => {
     equipe: '',
   });
 
+  useEffect(() => {
+    const fetchTournaments = async () => {
+      setIsLoading(true);
+      try {
+        const response = await tournamentsApi.getAll();
+        // Filtrer les tournois pour ne montrer que ceux à venir
+        const futureTournaments = response.data.filter((tournament: Tournament) => {
+          const startDate = new Date(tournament.date_debut);
+          return startDate > new Date();
+        });
+        setTournaments(futureTournaments);
+        if (futureTournaments.length === 0) {
+          toast.info('Aucun tournoi à venir disponible pour le moment.');
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des tournois:', error);
+        toast.error('Erreur lors de la récupération des tournois. Veuillez réessayer plus tard.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTournaments();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!selectedTournament) {
+      toast.error('Veuillez sélectionner un tournoi');
+      return;
+    }
+
     if (!selectedGame) {
       toast.error('Veuillez sélectionner un jeu');
       return;
     }
 
-    if (!formData.nom_tournoi) {
-      toast.error('Veuillez entrer le nom du tournoi');
-      return;
-    }
-
     try {
       await tournamentsApi.register({
+        tournoi_id: selectedTournament,
         ...formData,
         jeu: selectedGame,
-        statut: 'en_attente'
       });
       toast.success('Inscription au tournoi réussie !');
       navigate('/profile');
@@ -97,115 +124,140 @@ const InscriptionTournoi = () => {
             <CardTitle className="text-2xl font-bold text-center">Inscription à un tournoi</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="game">Sélectionnez un jeu</Label>
-                <Select
-                  value={selectedGame}
-                  onValueChange={setSelectedGame}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un jeu" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {JEUX_DISPONIBLES.map((jeu) => (
-                      <SelectItem key={jeu.id} value={jeu.id}>
-                        {jeu.nom}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {isLoading ? (
+              <div className="text-center py-4">
+                <p>Chargement des tournois disponibles...</p>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="nom_tournoi">Nom du tournoi</Label>
-                <Input
-                  id="nom_tournoi"
-                  name="nom_tournoi"
-                  value={formData.nom_tournoi}
-                  onChange={handleChange}
-                  required
-                  placeholder="Entrez le nom du tournoi"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pseudo">Pseudo de jeu</Label>
-                <Input
-                  id="pseudo"
-                  name="pseudo"
-                  value={formData.pseudo}
-                  onChange={handleChange}
-                  required
-                  placeholder="Votre pseudo dans le jeu"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="niveau">Niveau de jeu</Label>
-                <Select
-                  value={formData.niveau}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, niveau: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez votre niveau" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="debutant">Débutant</SelectItem>
-                    <SelectItem value="intermediaire">Intermédiaire</SelectItem>
-                    <SelectItem value="avance">Avancé</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="experience">Expérience</Label>
-                <Textarea
-                  id="experience"
-                  name="experience"
-                  value={formData.experience}
-                  onChange={handleChange}
-                  placeholder="Décrivez votre expérience dans le jeu"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="equipe">Nom de l'équipe</Label>
-                <Input
-                  id="equipe"
-                  name="equipe"
-                  value={formData.equipe}
-                  onChange={handleChange}
-                  placeholder="Nom de votre équipe (si vous en avez une)"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="commentaire">Commentaire additionnel</Label>
-                <Textarea
-                  id="commentaire"
-                  name="commentaire"
-                  value={formData.commentaire}
-                  onChange={handleChange}
-                  placeholder="Informations supplémentaires que vous souhaitez partager"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-4">
+            ) : tournaments.length === 0 ? (
+              <div className="text-center py-4">
+                <p>Aucun tournoi disponible pour le moment.</p>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/profile')}
+                  className="mt-4"
                 >
-                  Annuler
-                </Button>
-                <Button type="submit" className="esports-gradient">
-                  S'inscrire
+                  Retour au profil
                 </Button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="tournament">Sélectionnez un tournoi</Label>
+                  <Select
+                    value={selectedTournament?.toString()}
+                    onValueChange={(value) => setSelectedTournament(parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un tournoi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tournaments.map((tournament) => (
+                        <SelectItem key={tournament.id} value={tournament.id.toString()}>
+                          {tournament.nom} - {new Date(tournament.date_debut).toLocaleDateString()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="game">Sélectionnez un jeu</Label>
+                  <Select
+                    value={selectedGame}
+                    onValueChange={setSelectedGame}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un jeu" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {JEUX_DISPONIBLES.map((jeu) => (
+                        <SelectItem key={jeu.id} value={jeu.id}>
+                          {jeu.nom}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pseudo">Pseudo de jeu</Label>
+                  <Input
+                    id="pseudo"
+                    name="pseudo"
+                    value={formData.pseudo}
+                    onChange={handleChange}
+                    required
+                    placeholder="Votre pseudo dans le jeu"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="niveau">Niveau de jeu</Label>
+                  <Select
+                    value={formData.niveau}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, niveau: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez votre niveau" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="debutant">Débutant</SelectItem>
+                      <SelectItem value="intermediaire">Intermédiaire</SelectItem>
+                      <SelectItem value="avance">Avancé</SelectItem>
+                      <SelectItem value="expert">Expert</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="experience">Expérience</Label>
+                  <Textarea
+                    id="experience"
+                    name="experience"
+                    value={formData.experience}
+                    onChange={handleChange}
+                    placeholder="Décrivez votre expérience dans le jeu"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="equipe">Nom de l'équipe</Label>
+                  <Input
+                    id="equipe"
+                    name="equipe"
+                    value={formData.equipe}
+                    onChange={handleChange}
+                    placeholder="Nom de votre équipe (si vous en avez une)"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="commentaire">Commentaire additionnel</Label>
+                  <Textarea
+                    id="commentaire"
+                    name="commentaire"
+                    value={formData.commentaire}
+                    onChange={handleChange}
+                    placeholder="Informations supplémentaires que vous souhaitez partager"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/profile')}
+                  >
+                    Annuler
+                  </Button>
+                  <Button type="submit" className="esports-gradient">
+                    S'inscrire
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>

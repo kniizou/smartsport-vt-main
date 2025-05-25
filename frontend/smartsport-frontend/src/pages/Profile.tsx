@@ -24,26 +24,26 @@ interface Tournament {
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [enrolledTournaments, setEnrolledTournaments] = useState<Tournament[]>([]);
+  const [myTournaments, setMyTournaments] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const fetchMyTournaments = async () => {
+      try {
+        const response = await tournaments.getMyTournaments();
+        setMyTournaments(response.data);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des tournois:', error);
+        toast.error('Erreur lors de la récupération de vos tournois');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (user) {
-      fetchEnrolledTournaments();
+      fetchMyTournaments();
     }
   }, [user]);
-
-  const fetchEnrolledTournaments = async () => {
-    try {
-      const response = await tournaments.getMyTournaments();
-      setEnrolledTournaments(response.data);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des tournois:', error);
-      toast.error('Impossible de charger vos tournois inscrits');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   if (!user) {
     // This should ideally be handled by a protected route component
@@ -85,48 +85,26 @@ const ProfilePage: React.FC = () => {
           
           {isLoading ? (
             <p>Chargement de vos tournois...</p>
-          ) : enrolledTournaments.length > 0 ? (
+          ) : myTournaments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {enrolledTournaments.map((tournament) => (
-                <Card key={tournament.id}>
+              {myTournaments.map((tournament) => (
+                <Card key={tournament.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
-                    <CardTitle className="text-lg">{tournament.nom}</CardTitle>
-                    <Badge className={`${
-                      tournament.statut === 'planifie' ? 'bg-accent' :
-                      tournament.statut === 'en_cours' ? 'bg-destructive' :
-                      'bg-muted'
-                    }`}>
-                      {tournament.statut === 'planifie' ? 'Planifié' :
-                       tournament.statut === 'en_cours' ? 'En cours' :
-                       'Terminé'}
-                    </Badge>
+                    <CardTitle>{tournament.nom}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        <span className="text-sm">
-                          Du {new Date(tournament.date_debut).toLocaleDateString('fr-FR')} au {new Date(tournament.date_fin).toLocaleDateString('fr-FR')}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <Trophy className="h-4 w-4 mr-2" />
-                        <span className="text-sm">{tournament.prix_inscription}€</span>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        className="w-full mt-2"
-                        onClick={() => navigate(`/tournament/${tournament.id}`)}
-                      >
-                        Voir les détails
-                      </Button>
+                    <p className="text-sm text-muted-foreground mb-2">{tournament.description}</p>
+                    <div className="space-y-1">
+                      <p><strong>Date de début:</strong> {new Date(tournament.date_debut).toLocaleDateString()}</p>
+                      <p><strong>Date de fin:</strong> {new Date(tournament.date_fin).toLocaleDateString()}</p>
+                      <p><strong>Statut:</strong> {tournament.statut}</p>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">Vous n'êtes inscrit à aucun tournoi pour le moment.</p>
+            <p>Vous n'êtes inscrit à aucun tournoi pour le moment.</p>
           )}
         </div>
 

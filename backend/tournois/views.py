@@ -182,8 +182,7 @@ class TournoiViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
-            # Ou Tournoi.objects.filter(statut='planifie') pour les non connectés
-            return Tournoi.objects.none()
+            return Tournoi.objects.filter(statut='planifie')
 
         if user.role == 'administrateur':
             return Tournoi.objects.all()
@@ -196,9 +195,7 @@ class TournoiViewSet(viewsets.ModelViewSet):
             except Organisateur.DoesNotExist:  # ou user.organisateur.RelatedObjectDoesNotExist
                 # Si l'utilisateur avec role='organisateur' n'a pas de profil Organisateur lié
                 return Tournoi.objects.none()
-        # Pour les joueurs ou autres rôles, on pourrait afficher les tournois planifiés/en cours
-        # ou simplement aucun s'ils ne doivent pas voir de liste "mes tournois"
-        # Exemple pour les autres rôles
+        # Pour les joueurs ou autres rôles, on affiche les tournois planifiés/en cours
         return Tournoi.objects.filter(statut__in=['planifie', 'en_cours'])
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -410,7 +407,7 @@ class TournoiViewSet(viewsets.ModelViewSet):
             )
 
         # Récupérer les données du formulaire
-        nom_tournoi = request.data.get('nom_tournoi')
+        tournoi_id = request.data.get('tournoi_id')
         jeu = request.data.get('jeu')
         pseudo = request.data.get('pseudo')
         niveau = request.data.get('niveau')
@@ -418,7 +415,7 @@ class TournoiViewSet(viewsets.ModelViewSet):
         equipe = request.data.get('equipe')
         commentaire = request.data.get('commentaire')
 
-        if not all([nom_tournoi, jeu, pseudo, niveau, experience]):
+        if not all([tournoi_id, jeu, pseudo, niveau, experience]):
             return Response(
                 {"detail": "Tous les champs obligatoires doivent être remplis"},
                 status=status.HTTP_400_BAD_REQUEST
@@ -426,26 +423,22 @@ class TournoiViewSet(viewsets.ModelViewSet):
 
         try:
             joueur = request.user.joueur_profile
+            tournoi = Tournoi.objects.get(id=tournoi_id)
             
+            # Vérifier si le joueur est déjà inscrit
+            if InscriptionTournoi.objects.filter(tournoi=tournoi, joueur=joueur).exists():
+                return Response(
+                    {"detail": "Vous êtes déjà inscrit à ce tournoi"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             # Créer ou récupérer l'équipe
             equipe_obj = None
             if equipe:
                 equipe_obj, created = Equipe.objects.get_or_create(
                     nom=equipe,
-                    defaults={'organisateur': Organisateur.objects.first()}
+                    defaults={'organisateur': tournoi.organisateur}
                 )
-
-            # Créer le tournoi
-            tournoi = Tournoi.objects.create(
-                nom=nom_tournoi,
-                description=f"Tournoi de {jeu}",
-                type='elimination',
-                date_debut=timezone.now(),
-                date_fin=timezone.now() + timezone.timedelta(days=7),
-                prix_inscription=0,
-                statut='planifie',
-                organisateur=Organisateur.objects.first()
-            )
 
             # Créer l'inscription
             inscription = InscriptionTournoi.objects.create(
@@ -465,6 +458,11 @@ class TournoiViewSet(viewsets.ModelViewSet):
                 "inscription_id": inscription.id
             }, status=status.HTTP_201_CREATED)
 
+        except Tournoi.DoesNotExist:
+            return Response(
+                {"detail": "Tournoi non trouvé"},
+                status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             return Response(
                 {"detail": str(e)},
