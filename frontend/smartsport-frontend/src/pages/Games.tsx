@@ -1,4 +1,3 @@
-
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,7 @@ const games = [
   {
     id: 4,
     name: "Counter-Strike 2",
-    image: "https://images.unsplash.com/photo-1579702455224-c0dd4067670f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
+    image: "https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg",
     description: "Le célèbre FPS tactique dans une version améliorée avec de nouvelles cartes et mécaniques.",
     tournaments: 28,
     players: 1800,
@@ -45,7 +44,7 @@ const games = [
   {
     id: 5,
     name: "Rocket League",
-    image: "https://images.unsplash.com/photo-1614465000772-1b9595c123b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
+    image: "https://cdn.akamai.steamstatic.com/steam/apps/252950/header.jpg",
     description: "Un jeu qui mélange le football et les courses de voitures pour une expérience unique et addictive.",
     tournaments: 14,
     players: 1100,

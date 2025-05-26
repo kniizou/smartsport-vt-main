@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -23,9 +22,11 @@ const JoinCTA = () => {
               Rejoignez des milliers de joueurs et organisateurs qui utilisent déjà SmartSport pour leurs tournois e-sport. Créez votre compte gratuit dès maintenant !
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Button size="lg" className="bg-white hover:bg-gray-100 text-esports-blue hover:text-esports-darkpurple">
-                Créer un compte
-              </Button>
+              <Link to="/register">
+                <Button size="lg" className="bg-white hover:bg-gray-100 text-esports-blue hover:text-esports-darkpurple">
+                  Créer un compte
+                </Button>
+              </Link>
               <Link to="/tournaments">
                 <Button size="lg" variant="outline" className="border-white/50 hover:border-white text-white hover:bg-white/10">
                   Explorer les tournois

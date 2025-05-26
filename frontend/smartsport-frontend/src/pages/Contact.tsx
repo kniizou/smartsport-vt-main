@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { Mail, MessageSquare, MapPin, Send, GripHorizontal } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
@@ -245,14 +245,13 @@ const Contact = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p>
-                    SmartSport SAS<br />
-                    123 Avenue de l'E-Sport<br />
-                    75001 Paris, France
+                    EMSI Agdal 2<br />
+                    Rabat, Maroc
                   </p>
                   
                   <div className="aspect-video bg-muted rounded-md overflow-hidden">
                     <iframe 
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2624.142047744348!2d2.3354233157285967!3d48.87456397928991!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47e66e3878d4b433%3A0x13a0b0e31e41444!2s75001%20Paris!5e0!3m2!1sfr!2sfr!4v1617730006298!5m2!1sfr!2sfr" 
+                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3307.123456789012!2d-6.8457569!3d34.0062538!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda76d6be9c30d2f%3A0x1228617674ab5382!2sEMSI%20Agdal%202!5e0!3m2!1sfr!2sma!4v1617730006298!5m2!1sfr!2sma" 
                       width="100%" 
                       height="100%" 
                       style={{ border: 0 }}
@@ -284,15 +283,6 @@ const Contact = () => {
                 </h3>
                 <p className="text-muted-foreground">
                   Vous pouvez réinitialiser votre mot de passe en cliquant sur "Mot de passe oublié" sur la page de connexion.
-                </p>
-              </div>
-              <div className="bg-card/50 border border-border/50 rounded-xl p-6 backdrop-blur-md">
-                <h3 className="text-lg font-medium mb-2 flex items-center">
-                  <MessageSquare className="h-5 w-5 mr-2 text-primary" />
-                  Comment s'inscrire à un tournoi ?
-                </h3>
-                <p className="text-muted-foreground">
-                  Rendez-vous sur la page du tournoi qui vous intéresse et cliquez sur le bouton "S'inscrire".
                 </p>
               </div>
               <div className="bg-card/50 border border-border/50 rounded-xl p-6 backdrop-blur-md">

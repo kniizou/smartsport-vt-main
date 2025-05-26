@@ -125,8 +125,8 @@ export const tournaments = {
   update: (id: string, data: Record<string, unknown>) => api.put(`/tournois/${id}/`, data),
   delete: (id: string) => api.delete(`/tournois/${id}/`),
   getMyTournaments: () => api.get('/tournois/mes_tournois/'),
-  register: (data: Record<string, unknown>) => 
-    api.post('/tournois/inscrire_joueur/', data),
+  register: (tournoiId: string, data: Record<string, unknown>) => 
+    api.post(`/tournois/${tournoiId}/inscrire_joueur/`, data),
 };
 
 export const teams = {

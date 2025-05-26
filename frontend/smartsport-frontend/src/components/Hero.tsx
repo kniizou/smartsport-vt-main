@@ -1,9 +1,23 @@
-
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Hero = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+
+  const handleCreateTournament = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    } else if (user?.role === 'organisateur') {
+      navigate('/organisateur/tournois/nouveau');
+    } else {
+      // Rediriger vers la page de profil si l'utilisateur n'est pas organisateur
+      navigate('/profile');
+    }
+  };
+
   return (
     <div className="relative overflow-hidden pb-20 pt-24 sm:pb-32 sm:pt-32">
       {/* Background elements - modernized with gradients */}
@@ -29,13 +43,24 @@ const Hero = () => {
               Créez, gérez et participez à des tournois de Valorant, FIFA, League of Legends et plus encore. Suivez les classements et résultats en temps réel.
             </p>
             <div className="flex flex-wrap gap-5 pt-4">
-              <Button size="lg" className="esports-gradient rounded-xl h-14 px-8 text-base font-medium shadow-[0_0_15px_rgba(139,92,246,0.5)] hover:shadow-[0_0_25px_rgba(139,92,246,0.7)] transition-shadow">
+              <Button 
+                size="lg" 
+                className="esports-gradient rounded-xl h-14 px-8 text-base font-medium shadow-[0_0_15px_rgba(139,92,246,0.5)] hover:shadow-[0_0_25px_rgba(139,92,246,0.7)] transition-shadow"
+                onClick={handleCreateTournament}
+              >
                 Créer un tournoi
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button size="lg" variant="outline" className="border-accent border-2 hover:border-accent text-accent hover:bg-accent/10 rounded-xl h-14 px-8 text-base font-medium">
-                Explorer les tournois
-              </Button>
+              <Link to="/register">
+                <Button size="lg" className="bg-accent hover:bg-accent/90 rounded-xl h-14 px-8 text-base font-medium">
+                  Créer un compte
+                </Button>
+              </Link>
+              <Link to="/tournaments">
+                <Button size="lg" variant="outline" className="border-accent border-2 hover:border-accent text-accent hover:bg-accent/10 rounded-xl h-14 px-8 text-base font-medium">
+                  Explorer les tournois
+                </Button>
+              </Link>
             </div>
             <div className="flex items-center space-x-4 pt-6">
               <div className="flex -space-x-3">

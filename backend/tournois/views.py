@@ -49,6 +49,13 @@ class IsArbitreOrReadOnly(permissions.BasePermission):
         return request.user and request.user.role == 'arbitre'
 
 
+class IsJoueurOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user and request.user.role == 'joueur'
+
+
 class UtilisateurViewSet(viewsets.ModelViewSet):
     """
     API endpoint pour gérer les utilisateurs
@@ -178,6 +185,11 @@ class TournoiViewSet(viewsets.ModelViewSet):
     serializer_class = TournoiSerializer
     # Seuls les organisateurs peuvent créer/modifier/supprimer
     permission_classes = [IsOrganisateurOrReadOnly]
+
+    def get_permissions(self):
+        if self.action == 'inscrire_joueur':
+            return [IsJoueurOrReadOnly()]
+        return super().get_permissions()
 
     def get_queryset(self):
         user = self.request.user
@@ -411,8 +423,8 @@ class TournoiViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-    @action(detail=False, methods=['post'])
-    def inscrire_joueur(self, request):
+    @action(detail=True, methods=['post'])
+    def inscrire_joueur(self, request, pk=None):
         """
         Inscrit un joueur à un tournoi
         """
@@ -429,7 +441,6 @@ class TournoiViewSet(viewsets.ModelViewSet):
             )
 
         # Récupérer les données du formulaire
-        tournoi_id = request.data.get('tournoi_id')
         jeu = request.data.get('jeu')
         pseudo = request.data.get('pseudo')
         niveau = request.data.get('niveau')
@@ -437,20 +448,46 @@ class TournoiViewSet(viewsets.ModelViewSet):
         equipe = request.data.get('equipe')
         commentaire = request.data.get('commentaire')
 
-        if not all([tournoi_id, jeu, pseudo, niveau, experience]):
+        if not all([jeu, pseudo, niveau, experience]):
             return Response(
                 {"detail": "Tous les champs obligatoires doivent être remplis"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
-            joueur = request.user.joueur_profile
-            tournoi = Tournoi.objects.get(id=tournoi_id)
+            # Récupérer ou créer le profil joueur
+            joueur = Joueur.objects.filter(utilisateur=request.user).first()
+            if not joueur:
+                joueur = Joueur.objects.create(
+                    utilisateur=request.user,
+                    niveau=niveau,
+                    experience=experience
+                )
+
+            tournoi = self.get_object()
             
+            # Vérifier si le tournoi est ouvert aux inscriptions
+            if tournoi.statut != 'planifie':
+                return Response(
+                    {"detail": "Ce tournoi n'est plus ouvert aux inscriptions"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             # Vérifier si le joueur est déjà inscrit
             if InscriptionTournoi.objects.filter(tournoi=tournoi, joueur=joueur).exists():
                 return Response(
                     {"detail": "Vous êtes déjà inscrit à ce tournoi"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Vérifier si le joueur a déjà une inscription en attente
+            inscription_en_attente = InscriptionTournoi.objects.filter(
+                joueur=joueur,
+                statut='en_attente'
+            ).exists()
+            if inscription_en_attente:
+                return Response(
+                    {"detail": "Vous avez déjà une inscription en attente pour un autre tournoi"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -475,9 +512,25 @@ class TournoiViewSet(viewsets.ModelViewSet):
                 statut='en_attente'
             )
 
+            # Mettre à jour le nombre d'équipes inscrites si le champ existe
+            try:
+                tournoi.registeredTeams = (tournoi.registeredTeams or 0) + 1
+                tournoi.save()
+            except AttributeError:
+                # Si le champ n'existe pas, on continue sans mettre à jour
+                pass
+
             return Response({
                 "message": "Inscription au tournoi réussie",
-                "inscription_id": inscription.id
+                "inscription_id": inscription.id,
+                "statut": "en_attente",
+                "tournoi": {
+                    "id": tournoi.id,
+                    "nom": tournoi.nom,
+                    "date_debut": tournoi.date_debut,
+                    "date_fin": tournoi.date_fin,
+                    "statut": tournoi.statut
+                }
             }, status=status.HTTP_201_CREATED)
 
         except Tournoi.DoesNotExist:
@@ -486,8 +539,11 @@ class TournoiViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            import traceback
+            print("Erreur détaillée:", str(e))
+            print("Traceback:", traceback.format_exc())
             return Response(
-                {"detail": str(e)},
+                {"detail": f"Une erreur est survenue lors de l'inscription: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

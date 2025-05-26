@@ -1,4 +1,3 @@
-
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -242,15 +241,15 @@ const Privacy = () => {
 
                 <Separator />
 
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Contact</h2>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Contact</h3>
                   <p className="text-muted-foreground">
-                    Si vous avez des questions concernant cette politique de confidentialité ou nos pratiques en matière de données, veuillez nous contacter à <a href="mailto:privacy@smartsport.com" className="text-accent hover:underline">privacy@smartsport.com</a> ou à l'adresse suivante :<br /><br />
-                    SmartSport SAS<br />
-                    Responsable de la protection des données<br />
-                    123 Avenue de l'E-Sport<br />
-                    75001 Paris, France
+                    Pour toute question concernant cette politique de confidentialité, veuillez nous contacter à :
                   </p>
+                  <div className="space-y-2">
+                    <p className="text-muted-foreground">Email : contact@smartsport.com</p>
+                    <p className="text-muted-foreground">Adresse : Rabat, Maroc</p>
+                  </div>
                 </div>
               </div>
             </CardContent>

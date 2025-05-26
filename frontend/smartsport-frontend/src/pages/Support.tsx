@@ -1,10 +1,9 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
-import { HelpCircle, FileQuestion, BookOpen, MessageSquare, PhoneCall, Mail } from "lucide-react";
+import { HelpCircle, FileQuestion, BookOpen, MessageSquare, PhoneCall, Mail, Clock } from "lucide-react";
 
 const Support = () => {
   return (

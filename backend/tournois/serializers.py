@@ -48,19 +48,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate_username(self, value):
-        print(f"Validation du username: {value}")
         if Utilisateur.objects.filter(username=value).exists():
-            raise serializers.ValidationError("Ce nom d'utilisateur est déjà pris.")
+            raise serializers.ValidationError("Ce nom d'utilisateur est déjà pris")
         return value
 
     def validate_email(self, value):
-        print(f"Validation de l'email (permissive): {value}")
         if Utilisateur.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Cet email est déjà utilisé.")
+            raise serializers.ValidationError("Cet email est déjà utilisé")
         return value
 
     def create(self, validated_data):
-        print("Création de l'utilisateur avec les données:", validated_data)
         try:
             # Créer l'utilisateur
             user = Utilisateur.objects.create_user(
@@ -69,12 +66,10 @@ class RegisterSerializer(serializers.ModelSerializer):
                 password=validated_data['password'],
                 role=validated_data['role']
             )
-            print(f"Utilisateur {user.email} créé avec succès avec le rôle {user.role}.")
 
             try:
                 # Créer le profil correspondant au rôle
                 if user.role == 'joueur':
-                    # Vérifier si un profil joueur existe déjà
                     try:
                         joueur = Joueur.objects.get(utilisateur=user)
                         print(f"Profil joueur existe déjà pour {user.email}")
