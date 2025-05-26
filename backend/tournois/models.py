@@ -36,83 +36,48 @@ class Utilisateur(AbstractUser):
 
 
 class Joueur(models.Model):
-    NIVEAU_CHOICES = [
-        ('debutant', 'Débutant'),
-        ('intermediaire', 'Intermédiaire'),
-        ('avance', 'Avancé'),
-        ('expert', 'Expert'),
-    ]
+    utilisateur = models.OneToOneField(Utilisateur, on_delete=models.CASCADE, primary_key=True)
+    niveau = models.CharField(max_length=50, default='débutant')
+    classement = models.IntegerField(default=0)
 
-    utilisateur = models.OneToOneField(
-        Utilisateur,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        db_column='id'
-    )
-    niveau = models.CharField(
-        max_length=20, choices=NIVEAU_CHOICES, default='debutant')
-    classement = models.IntegerField(null=True, blank=True)
+    def __str__(self):
+        return f"Joueur {self.utilisateur.username}"
 
     class Meta:
         db_table = 'joueur'
-        verbose_name = "Joueur"
-        verbose_name_plural = "Joueurs"
-
-    def __str__(self):
-        return f"Joueur: {self.utilisateur.username}"
+        ordering = ['-classement']
 
 
 class Organisateur(models.Model):
-    utilisateur = models.OneToOneField(
-        Utilisateur,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        db_column='id'
-    )
-    nom_organisation = models.CharField(max_length=100)
+    utilisateur = models.OneToOneField(Utilisateur, on_delete=models.CASCADE, primary_key=True)
+    nom_organisation = models.CharField(max_length=100, default='')
     description = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Organisateur {self.utilisateur.username}"
 
     class Meta:
         db_table = 'organisateur'
-        verbose_name = "Organisateur"
-        verbose_name_plural = "Organisateurs"
-
-    def __str__(self):
-        return f"Organisateur: {self.nom_organisation}"
 
 
 class Administrateur(models.Model):
-    utilisateur = models.OneToOneField(
-        Utilisateur,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        db_column='id'
-    )
+    utilisateur = models.OneToOneField(Utilisateur, on_delete=models.CASCADE, primary_key=True)
+
+    def __str__(self):
+        return f"Administrateur {self.utilisateur.username}"
 
     class Meta:
         db_table = 'administrateur'
-        verbose_name = "Administrateur"
-        verbose_name_plural = "Administrateurs"
-
-    def __str__(self):
-        return f"Admin: {self.utilisateur.username}"
 
 
 class Arbitre(models.Model):
-    utilisateur = models.OneToOneField(
-        Utilisateur,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        db_column='id'
-    )
+    utilisateur = models.OneToOneField(Utilisateur, on_delete=models.CASCADE, primary_key=True)
+
+    def __str__(self):
+        return f"Arbitre {self.utilisateur.username}"
 
     class Meta:
         db_table = 'arbitre'
-        verbose_name = "Arbitre"
-        verbose_name_plural = "Arbitres"
-
-    def __str__(self):
-        return f"Arbitre: {self.utilisateur.username}"
 
 
 class Paiement(models.Model):

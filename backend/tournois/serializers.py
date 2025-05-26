@@ -42,71 +42,87 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True)
-    email = serializers.CharField(required=True)
-    username = serializers.CharField(required=True)
-
     class Meta:
-        model = User
-        fields = ('username', 'email', 'password',
-                  'first_name', 'last_name', 'role')
-
-    def validate_email(self, value):
-        print("Validation de l'email (permissive):", value)
-        if '@' not in value:
-            raise serializers.ValidationError(
-                "Format d'email invalide (doit contenir un @)")
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Cet email est déjà utilisé")
-        return value
+        model = Utilisateur
+        fields = ('username', 'email', 'password', 'role')
+        extra_kwargs = {'password': {'write_only': True}}
 
     def validate_username(self, value):
-        print("Validation du username:", value)
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError(
-                "Ce nom d'utilisateur est déjà pris")
+        print(f"Validation du username: {value}")
+        if Utilisateur.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Ce nom d'utilisateur est déjà pris.")
+        return value
+
+    def validate_email(self, value):
+        print(f"Validation de l'email (permissive): {value}")
+        if Utilisateur.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Cet email est déjà utilisé.")
         return value
 
     def create(self, validated_data):
         print("Création de l'utilisateur avec les données:", validated_data)
-        role = validated_data.get('role', 'joueur')
         try:
-            user = User.objects.create_user(
+            # Créer l'utilisateur
+            user = Utilisateur.objects.create_user(
                 username=validated_data['username'],
                 email=validated_data['email'],
                 password=validated_data['password'],
-                first_name=validated_data.get('first_name', ''),
-                last_name=validated_data.get('last_name', ''),
-                role=role
+                role=validated_data['role']
             )
-            print(f"Utilisateur {user.email} créé avec succès avec le rôle {role}.")
+            print(f"Utilisateur {user.email} créé avec succès avec le rôle {user.role}.")
 
-            # Créer le profil associé en fonction du rôle
-            if role == 'joueur':
-                Joueur.objects.create(utilisateur=user)
-                print(f"Profil Joueur créé pour {user.email}")
-            elif role == 'organisateur':
-                try:
-                    # Pour Organisateur, nom_organisation est requis par le modèle
-                    nom_org = f"Organisation de {user.username}"
-                    Organisateur.objects.create(
-                        utilisateur=user,
-                        nom_organisation=nom_org
-                    )
-                    print(f"Profil Organisateur créé pour {user.email} avec le nom {nom_org}")
-                except Exception as e:
-                    print(f"Erreur lors de la création du profil organisateur: {str(e)}")
-                    # Supprimer l'utilisateur si le profil n'a pas pu être créé
-                    user.delete()
-                    raise
-            elif role == 'arbitre':
-                Arbitre.objects.create(utilisateur=user)
-                print(f"Profil Arbitre créé pour {user.email}")
+            try:
+                # Créer le profil correspondant au rôle
+                if user.role == 'joueur':
+                    # Vérifier si un profil joueur existe déjà
+                    try:
+                        joueur = Joueur.objects.get(utilisateur=user)
+                        print(f"Profil joueur existe déjà pour {user.email}")
+                        return user
+                    except Joueur.DoesNotExist:
+                        Joueur.objects.create(utilisateur=user)
+                        print(f"Profil joueur créé pour {user.email}")
+                elif user.role == 'organisateur':
+                    try:
+                        organisateur = Organisateur.objects.get(utilisateur=user)
+                        print(f"Profil organisateur existe déjà pour {user.email}")
+                        return user
+                    except Organisateur.DoesNotExist:
+                        Organisateur.objects.create(utilisateur=user)
+                        print(f"Profil organisateur créé pour {user.email}")
+                elif user.role == 'arbitre':
+                    try:
+                        arbitre = Arbitre.objects.get(utilisateur=user)
+                        print(f"Profil arbitre existe déjà pour {user.email}")
+                        return user
+                    except Arbitre.DoesNotExist:
+                        Arbitre.objects.create(utilisateur=user)
+                        print(f"Profil arbitre créé pour {user.email}")
+                elif user.role == 'administrateur':
+                    try:
+                        admin = Administrateur.objects.get(utilisateur=user)
+                        print(f"Profil administrateur existe déjà pour {user.email}")
+                        return user
+                    except Administrateur.DoesNotExist:
+                        Administrateur.objects.create(utilisateur=user)
+                        print(f"Profil administrateur créé pour {user.email}")
+                else:
+                    raise serializers.ValidationError(f"Rôle invalide: {user.role}")
 
-            return user
+                return user
+            except Exception as profile_error:
+                print(f"Erreur lors de la création du profil {user.role}: {str(profile_error)}")
+                # Supprimer l'utilisateur si la création du profil échoue
+                if user.id:
+                    try:
+                        user.delete()
+                    except Exception as delete_error:
+                        print(f"Erreur lors de la suppression de l'utilisateur: {str(delete_error)}")
+                raise serializers.ValidationError(f"Erreur lors de la création du profil: {str(profile_error)}")
+
         except Exception as e:
-            print("Erreur lors de la création de l'utilisateur ou du profil:", str(e))
-            raise
+            print(f"Erreur lors de la création de l'utilisateur: {str(e)}")
+            raise serializers.ValidationError(f"Erreur lors de la création de l'utilisateur: {str(e)}")
 
 
 class UtilisateurSerializer(serializers.ModelSerializer):

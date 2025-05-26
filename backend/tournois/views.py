@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, serializers
 from django.contrib.auth import get_user_model, authenticate
 # Importez les modèles nécessaires
 from .models import Joueur, Organisateur, Arbitre, Utilisateur, Paiement, Equipe, JoueurEquipe, Tournoi, Rencontre, FAQ, InscriptionTournoi
@@ -555,30 +555,49 @@ class RegisterAPI(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        print("Données reçues:", request.data)  # Log des données reçues
+        print("Données reçues:", request.data)
         serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            # Log des données validées
-            print("Données valides:", serializer.validated_data)
-            try:
-                user = serializer.save()
-                # Log de la création réussie
-                print("Utilisateur créé:", user.email)
-                return Response({
-                    "user": UserSerializer(user).data,
-                    "message": "Utilisateur créé avec succès"
-                }, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                import traceback
-                print("Erreur détaillée lors de la création:", str(e))
-                print("Traceback complet:", traceback.format_exc())
-                return Response({
-                    "error": str(e),
-                    "detail": "Une erreur est survenue lors de la création de l'utilisateur"
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        # Log des erreurs de validation
-        print("Erreurs de validation:", serializer.errors)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            if serializer.is_valid():
+                print("Données valides:", serializer.validated_data)
+                try:
+                    user = serializer.save()
+                    print("Utilisateur créé:", user.email)
+                    return Response({
+                        "user": UserSerializer(user).data,
+                        "message": "Utilisateur créé avec succès"
+                    }, status=status.HTTP_201_CREATED)
+                except serializers.ValidationError as ve:
+                    print("Erreur de validation lors de la création:", str(ve))
+                    return Response({
+                        "error": str(ve),
+                        "detail": "Erreur de validation lors de la création de l'utilisateur"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                except Exception as e:
+                    import traceback
+                    print("Erreur détaillée lors de la création:", str(e))
+                    print("Traceback complet:", traceback.format_exc())
+                    if hasattr(e, 'user') and e.user and e.user.id:
+                        try:
+                            e.user.delete()
+                        except Exception as delete_error:
+                            print("Erreur lors de la suppression de l'utilisateur:", str(delete_error))
+                    return Response({
+                        "error": str(e),
+                        "detail": "Une erreur est survenue lors de la création de l'utilisateur"
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                print("Erreurs de validation:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import traceback
+            print("Erreur inattendue:", str(e))
+            print("Traceback complet:", traceback.format_exc())
+            return Response({
+                "error": str(e),
+                "detail": "Une erreur inattendue est survenue"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LoginAPI(APIView):

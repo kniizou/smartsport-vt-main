@@ -77,6 +77,14 @@ const ProfilePage: React.FC = () => {
           {user.first_name && <p><strong>Prénom:</strong> {user.first_name}</p>}
           {user.last_name && <p><strong>Nom:</strong> {user.last_name}</p>}
           <p><strong>Rôle:</strong> {user.role}</p>
+          {user.role === 'organisateur' && (
+            <Button 
+              onClick={() => navigate('/organisateur/dashboard')} 
+              className="mt-4 esports-gradient"
+            >
+              Dashboard
+            </Button>
+          )}
         </div>
 
         <div className="bg-card p-6 rounded-lg shadow-md mb-6">
