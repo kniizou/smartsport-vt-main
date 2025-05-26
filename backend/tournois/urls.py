@@ -21,6 +21,7 @@ router.register(r'equipes', views.EquipeViewSet)
 router.register(r'joueurs-equipes', views.JoueurEquipeViewSet)
 router.register(r'tournois', views.TournoiViewSet)
 router.register(r'rencontres', views.RencontreViewSet)
+router.register(r'inscriptions', views.InscriptionTournoiViewSet, basename='inscription')
 
 # Configuration de la documentation Swagger
 schema_view = get_schema_view(

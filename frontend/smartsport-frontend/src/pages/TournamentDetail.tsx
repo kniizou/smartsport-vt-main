@@ -73,7 +73,7 @@ const TournamentDetail = () => {
       return;
     }
     setLoading(true);
-    api.get<ApiTournamentDetail>(`/tournois/${tournamentId}/`)
+    api.get<ApiTournamentDetail>(`/api/tournois/${tournamentId}/`)
       .then(response => {
         const parsedData = response.data; // Utiliser const
         try {

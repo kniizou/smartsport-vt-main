@@ -254,13 +254,19 @@ class DashboardAdminSerializer(serializers.Serializer):
     total_organisateurs = serializers.IntegerField()
     total_tournois = serializers.IntegerField()
     total_equipes = serializers.IntegerField()
-    tournois_actifs = TournoiSerializer(many=True)
-    derniers_joueurs = JoueurSerializer(many=True)
-    derniers_organisateurs = OrganisateurSerializer(many=True)
-    derniers_paiements = PaiementSerializer(many=True)
+    tournois = TournoiSerializer(many=True)
+    joueurs = JoueurSerializer(many=True)
+    organisateurs = OrganisateurSerializer(many=True)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return data
 
 
 class InscriptionTournoiSerializer(serializers.ModelSerializer):
+    tournoi = TournoiSerializer(read_only=True)
+    joueur = JoueurSerializer(read_only=True)
+    
     class Meta:
         model = InscriptionTournoi
         fields = [

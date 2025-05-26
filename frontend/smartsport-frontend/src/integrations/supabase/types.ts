@@ -126,9 +126,11 @@ export type CompositeTypes<
 // Add a User type that matches your Django UserSerializer
 export type User = {
   id: number;
+  username: string;
   email: string;
-  first_name?: string; // Optional as it might not always be present
-  last_name?: string;  // Optional
-  role: string; // Consider using a more specific string literal type if roles are fixed
-  // Add any other fields that your UserSerializer might return
+  first_name: string;
+  last_name: string;
+  role: 'joueur' | 'organisateur' | 'administrateur' | 'arbitre';
+  is_active: boolean;
+  date_inscription: string;
 };

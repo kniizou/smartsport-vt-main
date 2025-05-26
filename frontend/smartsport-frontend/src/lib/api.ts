@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -11,101 +11,89 @@ const api = axios.create({
 
 // Intercepteur pour ajouter le token d'authentification
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken'); // Use 'authToken'
+  const token = localStorage.getItem('authToken');
+  console.log('=== Requête API ===');
+  console.log('URL:', config.url);
+  console.log('Méthode:', config.method);
+  console.log('Token présent:', !!token);
+  console.log('Headers:', config.headers);
+  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log('Headers après ajout du token:', config.headers);
   }
   return config;
+}, (error) => {
+  console.error('Erreur dans l\'intercepteur de requête:', error);
+  return Promise.reject(error);
 });
 
 // Intercepteur de réponse pour gestion centralisée des erreurs
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('=== Réponse API ===');
+    console.log('Status:', response.status);
+    console.log('URL:', response.config.url);
+    console.log('Données:', response.data);
+    return response;
+  },
   (error) => {
-    let message = 'Une erreur est survenue.';
+    console.error('=== Erreur API ===');
+    console.error('Status:', error.response?.status);
+    console.error('URL:', error.config?.url);
+    console.error('Données:', error.response?.data);
+    console.error('Message:', error.message);
+    
     if (error.response) {
       switch (error.response.status) {
-        case 400:
-          message = error.response.data?.error || 'Requête invalide (400).';
-          break;
         case 401:
-          message = 'Non autorisé (401). Veuillez vous reconnecter.';
+          console.log('Token invalide ou expiré, redirection vers login');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('authUser');
+          window.location.href = '/login';
           break;
         case 403:
-          message = 'Accès interdit (403).';
+          console.error('Accès non autorisé - Rôle insuffisant');
           break;
         case 404:
-          message = 'Ressource non trouvée (404).';
+          console.error('Ressource non trouvée - URL incorrecte');
           break;
         case 500:
-          message = 'Erreur interne du serveur (500).';
+          console.error('Erreur serveur - Problème côté backend');
           break;
         default:
-          message = error.response.data?.error || `Erreur (${error.response.status}).`;
+          console.error('Erreur:', error.response.data);
       }
-      // Log détaillé côté client
-      console.error('Erreur API:', {
-        url: error.config?.url,
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers,
-      });
-    } else if (error.request) {
-      message = "Aucune réponse du serveur. Vérifiez votre connexion internet.";
-      console.error('Aucune réponse API:', error.request);
-    } else {
-      message = error.message;
-      console.error('Erreur lors de la configuration de la requête:', error.message);
     }
-    // On attache le message pour affichage dans les composants
-    error.customMessage = message;
     return Promise.reject(error);
   }
 );
 
 export const auth = {
   login: async (email: string, password: string) => {
-    const response = await api.post('/auth/login/', { email, password });
-    // The token and user data will be set in AuthContext by Login.tsx
-    // This function just returns the data for Login.tsx to process
-    // No need to set localStorage here directly as AuthContext handles it.
-    // However, if other parts of the app rely on this direct setting,
-    // ensure consistency or refactor them to use AuthContext.
-    // For now, let's assume Login.tsx is the primary consumer and will use AuthContext.
-    // If direct setting is still desired here for some reason:
-    // if (response.data.token) {
-    //   localStorage.setItem('authToken', response.data.token);
-    // }
-    // if (response.data.user) {
-    //   localStorage.setItem('authUser', JSON.stringify(response.data.user));
-    // }
-    return response.data; // Contains { user, token, refresh } from backend
+    const response = await api.post('/api/auth/login/', { email, password });
+    return response.data;
   },
 
-  // The register function below is the one to keep, as it includes optional first_name and last_name
-  // The simpler one above this comment block will be removed by this diff.
   register: async (userData: {
     username: string;
     email: string;
     password: string;
     role: string;
-    first_name?: string; // Optional fields based on RegisterSerializer
-    last_name?: string;  // Optional fields based on RegisterSerializer
+    first_name?: string;
+    last_name?: string;
   }) => {
-    const response = await api.post('/auth/register/', userData);
+    const response = await api.post('/api/auth/register/', userData);
     return response.data;
   },
 
   logout: () => {
-    // This function is now primarily handled by AuthContext.
-    // Keeping it here for potential direct calls, but ensure consistency.
     localStorage.removeItem('authToken');
     localStorage.removeItem('authUser');
   },
 
   getCurrentUser: () => {
-    // This is now primarily handled by AuthContext.
-    const userStr = localStorage.getItem('authUser'); // Use 'authUser'
+    const userStr = localStorage.getItem('authUser');
     if (userStr) {
       return JSON.parse(userStr);
     }
@@ -113,44 +101,49 @@ export const auth = {
   },
 
   isAuthenticated: () => {
-    // This is now primarily handled by AuthContext.
-    return !!localStorage.getItem('authToken'); // Use 'authToken'
+    return !!localStorage.getItem('authToken');
   },
 };
 
 export const tournaments = {
-  getAll: () => api.get('/tournois/'),
-  getById: (id: string) => api.get(`/tournois/${id}/`),
-  create: (data: Record<string, unknown>) => api.post('/tournois/', data),
-  update: (id: string, data: Record<string, unknown>) => api.put(`/tournois/${id}/`, data),
-  delete: (id: string) => api.delete(`/tournois/${id}/`),
-  getMyTournaments: () => api.get('/tournois/mes_tournois/'),
+  getAll: () => api.get('/api/tournois/'),
+  getById: (id: string) => api.get(`/api/tournois/${id}/`),
+  create: (data: Record<string, unknown>) => api.post('/api/tournois/', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/api/tournois/${id}/`, data),
+  delete: (id: string) => api.delete(`/api/tournois/${id}/`),
+  getMyTournaments: () => api.get('/api/tournois/mes_tournois/'),
   register: (tournoiId: string, data: Record<string, unknown>) => 
-    api.post(`/tournois/${tournoiId}/inscrire_joueur/`, data),
+    api.post(`/api/tournois/${tournoiId}/inscrire_joueur/`, data),
 };
 
 export const teams = {
-  getAll: () => api.get('/equipes/'),
-  getById: (id: string) => api.get(`/equipes/${id}/`),
-  create: (data: Record<string, unknown>) => api.post('/equipes/', data),
-  update: (id: string, data: Record<string, unknown>) => api.put(`/equipes/${id}/`, data),
-  delete: (id: string) => api.delete(`/equipes/${id}/`),
+  getAll: () => api.get('/api/equipes/'),
+  getById: (id: string) => api.get(`/api/equipes/${id}/`),
+  create: (data: Record<string, unknown>) => api.post('/api/equipes/', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/api/equipes/${id}/`, data),
+  delete: (id: string) => api.delete(`/api/equipes/${id}/`),
 };
 
 export const matches = {
-  getAll: () => api.get('/rencontres/'),
-  getById: (id: string) => api.get(`/rencontres/${id}/`),
-  create: (data: Record<string, unknown>) => api.post('/rencontres/', data),
-  update: (id: string, data: Record<string, unknown>) => api.put(`/rencontres/${id}/`, data),
-  delete: (id: string) => api.delete(`/rencontres/${id}/`),
+  getAll: () => api.get('/api/rencontres/'),
+  getById: (id: string) => api.get(`/api/rencontres/${id}/`),
+  create: (data: Record<string, unknown>) => api.post('/api/rencontres/', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/api/rencontres/${id}/`, data),
+  delete: (id: string) => api.delete(`/api/rencontres/${id}/`),
 };
 
 export const utilisateurs = {
-  // Add params for filtering, e.g., by role
-  getAll: (params?: Record<string, string | number>) => api.get('/utilisateurs/', { params }),
-  getById: (id: string | number) => api.get(`/utilisateurs/${id}/`),
-  // Add create, update, delete if admins can manage users directly via API
-  // For now, focusing on read operations for the dashboard
+  getAll: (params?: Record<string, string | number>) => api.get('/api/utilisateurs/', { params }),
+  getById: (id: string | number) => api.get(`/api/utilisateurs/${id}/`),
+  update: (id: string | number, data: Record<string, unknown>) => api.patch(`/api/utilisateurs/${id}/`, data),
+  delete: (id: string | number) => api.delete(`/api/utilisateurs/${id}/`),
+};
+
+export const dashboard = {
+  getAdminStats: () => api.get('/api/dashboard/admin/'),
+  updateUser: (userId: number, data: Record<string, unknown>) => api.patch(`/api/utilisateurs/${userId}/`, data),
+  deleteUser: (userId: number) => api.delete(`/api/utilisateurs/${userId}/`),
+  deleteTournament: (tournoiId: number) => api.delete(`/api/tournois/${tournoiId}/`),
 };
 
 export default api;

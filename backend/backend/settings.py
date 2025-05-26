@@ -151,8 +151,28 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Votre frontend
     "http://localhost:5173",  # Frontend Vite dev server
     "http://localhost:8080",  # Frontend Vite dev server (actual)
+    "http://localhost:8081",  # Frontend Vite dev server (new)
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 # Ajoutez ces configurations
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

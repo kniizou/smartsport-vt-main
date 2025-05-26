@@ -94,7 +94,7 @@ const TournamentCard = ({ tournament }: { tournament: ApiTournament }) => {
         </div>
       </div>
       <div className="p-4 pt-0">
-        <Link to={`/tournament/${tournament.id}`}>
+        <Link to={`/tournois/${tournament.id}`}>
           <Button variant="outline" className="w-full">
             Voir les détails
           </Button>

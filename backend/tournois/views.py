@@ -10,14 +10,15 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .serializers import (
     UtilisateurSerializer, JoueurSerializer, OrganisateurSerializer,
     ArbitreSerializer, PaiementSerializer, EquipeSerializer,
-    JoueurEquipeSerializer, TournoiSerializer, RencontreSerializer, RegisterSerializer, UserSerializer
+    JoueurEquipeSerializer, TournoiSerializer, RencontreSerializer, RegisterSerializer, UserSerializer,
+    InscriptionTournoiSerializer
 )
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import FAQSerializer
 from .serializers import DashboardAdminSerializer
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.utils import timezone
 User = get_user_model()
 
@@ -39,7 +40,8 @@ class IsOrganisateurOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
-        return request.user and request.user.role == 'organisateur'
+        # Autoriser organisateur ET administrateur
+        return request.user and request.user.role in ['organisateur', 'administrateur']
 
 
 class IsArbitreOrReadOnly(permissions.BasePermission):
@@ -473,23 +475,26 @@ class TournoiViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Vérifier si le joueur est déjà inscrit
-            if InscriptionTournoi.objects.filter(tournoi=tournoi, joueur=joueur).exists():
-                return Response(
-                    {"detail": "Vous êtes déjà inscrit à ce tournoi"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            # Vérifier si le joueur est déjà inscrit à ce tournoi spécifique
+            inscription_existante = InscriptionTournoi.objects.filter(
+                tournoi=tournoi,
+                joueur=joueur
+            ).first()
 
-            # Vérifier si le joueur a déjà une inscription en attente
-            inscription_en_attente = InscriptionTournoi.objects.filter(
-                joueur=joueur,
-                statut='en_attente'
-            ).exists()
-            if inscription_en_attente:
-                return Response(
-                    {"detail": "Vous avez déjà une inscription en attente pour un autre tournoi"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            if inscription_existante:
+                if inscription_existante.statut == 'en_attente':
+                    return Response(
+                        {"detail": "Vous avez déjà une inscription en attente pour ce tournoi"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                elif inscription_existante.statut == 'validee':
+                    return Response(
+                        {"detail": "Vous êtes déjà inscrit à ce tournoi"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                elif inscription_existante.statut == 'refusee':
+                    # Si l'inscription précédente a été refusée, on peut créer une nouvelle inscription
+                    inscription_existante.delete()
 
             # Créer ou récupérer l'équipe
             equipe_obj = None
@@ -511,14 +516,6 @@ class TournoiViewSet(viewsets.ModelViewSet):
                 commentaire=commentaire,
                 statut='en_attente'
             )
-
-            # Mettre à jour le nombre d'équipes inscrites si le champ existe
-            try:
-                tournoi.registeredTeams = (tournoi.registeredTeams or 0) + 1
-                tournoi.save()
-            except AttributeError:
-                # Si le champ n'existe pas, on continue sans mettre à jour
-                pass
 
             return Response({
                 "message": "Inscription au tournoi réussie",
@@ -696,39 +693,184 @@ class FAQViewSet(viewsets.ModelViewSet):
 
 
 class DashboardAdminView(APIView):
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Récupérer les statistiques
-        total_joueurs = Joueur.objects.count()
-        total_organisateurs = Organisateur.objects.count()
-        total_tournois = Tournoi.objects.count()
-        total_equipes = Equipe.objects.count()
+        print("Requête reçue dans DashboardAdminView")
+        print("Utilisateur:", request.user)
+        print("Est admin:", request.user.is_staff)
+        print("Est authentifié:", request.user.is_authenticated)
+        print("Rôle:", request.user.role)
 
-        # Récupérer les tournois actifs
-        tournois_actifs = Tournoi.objects.filter(statut='en_cours')[:5]
+        if not request.user.role == 'administrateur':
+            print("Accès refusé: utilisateur non admin")
+            return Response(
+                {"error": "Accès non autorisé. Rôle administrateur requis."},
+                status=403
+            )
 
-        # Récupérer les derniers joueurs inscrits
-        derniers_joueurs = Joueur.objects.order_by(
-            '-utilisateur__date_inscription')[:5]
+        try:
+            # Récupération des statistiques
+            total_joueurs = Joueur.objects.count()
+            total_organisateurs = Organisateur.objects.count()
+            total_tournois = Tournoi.objects.count()
+            total_equipes = Equipe.objects.count()
 
-        # Récupérer les derniers organisateurs
-        derniers_organisateurs = Organisateur.objects.order_by(
-            '-utilisateur__date_inscription')[:5]
+            # Récupération des tournois avec leurs inscriptions et organisateurs
+            tournois = Tournoi.objects.all().select_related(
+                'organisateur',
+                'organisateur__utilisateur'
+            ).prefetch_related(
+                'inscriptiontournoi_set',
+                'inscriptiontournoi_set__joueur',
+                'inscriptiontournoi_set__joueur__utilisateur'
+            )
 
-        # Récupérer les derniers paiements
-        derniers_paiements = Paiement.objects.order_by('-date_paiement')[:5]
+            # Récupération des joueurs avec leurs inscriptions
+            joueurs = Joueur.objects.all().select_related(
+                'utilisateur'
+            ).prefetch_related(
+                'inscriptiontournoi_set',
+                'inscriptiontournoi_set__tournoi'
+            )
 
-        data = {
-            'total_joueurs': total_joueurs,
-            'total_organisateurs': total_organisateurs,
-            'total_tournois': total_tournois,
-            'total_equipes': total_equipes,
-            'tournois_actifs': TournoiSerializer(tournois_actifs, many=True).data,
-            'derniers_joueurs': JoueurSerializer(derniers_joueurs, many=True).data,
-            'derniers_organisateurs': OrganisateurSerializer(derniers_organisateurs, many=True).data,
-            'derniers_paiements': PaiementSerializer(derniers_paiements, many=True).data,
-        }
+            # Récupération des organisateurs avec leurs tournois
+            organisateurs = Organisateur.objects.all().select_related(
+                'utilisateur'
+            ).prefetch_related(
+                'tournoi_set'
+            )
 
-        serializer = DashboardAdminSerializer(data)
-        return Response(serializer.data)
+            # Sérialisation des données
+            tournois_data = []
+            for tournoi in tournois:
+                tournoi_dict = TournoiSerializer(tournoi).data
+                tournoi_dict['inscriptions'] = InscriptionTournoiSerializer(
+                    tournoi.inscriptiontournoi_set.all(),
+                    many=True
+                ).data
+                tournois_data.append(tournoi_dict)
+
+            joueurs_data = []
+            for joueur in joueurs:
+                joueur_dict = JoueurSerializer(joueur).data
+                joueur_dict['inscriptions'] = InscriptionTournoiSerializer(
+                    joueur.inscriptiontournoi_set.all(),
+                    many=True
+                ).data
+                joueurs_data.append(joueur_dict)
+
+            organisateurs_data = []
+            for organisateur in organisateurs:
+                organisateur_dict = OrganisateurSerializer(organisateur).data
+                organisateur_dict['tournois'] = TournoiSerializer(
+                    organisateur.tournoi_set.all(),
+                    many=True
+                ).data
+                organisateurs_data.append(organisateur_dict)
+
+            response_data = {
+                "total_joueurs": total_joueurs,
+                "total_organisateurs": total_organisateurs,
+                "total_tournois": total_tournois,
+                "total_equipes": total_equipes,
+                "tournois": tournois_data,
+                "joueurs": joueurs_data,
+                "organisateurs": organisateurs_data
+            }
+
+            print("Données envoyées au frontend:", response_data)
+            return Response(response_data)
+
+        except Exception as e:
+            print("Erreur lors de la récupération des données:", str(e))
+            return Response(
+                {"error": f"Erreur lors de la récupération des données: {str(e)}"},
+                status=500
+            )
+
+
+class InscriptionTournoiViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint pour gérer les inscriptions aux tournois
+
+    Permet de :
+    - Lister les inscriptions (filtrées par organisateur)
+    - Valider/refuser une inscription (organisateur uniquement)
+    - Voir les détails d'une inscription
+    """
+    queryset = InscriptionTournoi.objects.all()
+    serializer_class = InscriptionTournoiSerializer
+    permission_classes = [IsOrganisateurOrReadOnly]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return InscriptionTournoi.objects.none()
+
+        if user.role == 'administrateur':
+            return InscriptionTournoi.objects.all()
+        elif user.role == 'organisateur':
+            try:
+                organisateur_profile = user.organisateur
+                return InscriptionTournoi.objects.filter(tournoi__organisateur=organisateur_profile)
+            except Organisateur.DoesNotExist:
+                return InscriptionTournoi.objects.none()
+        elif user.role == 'joueur':
+            try:
+                joueur = Joueur.objects.get(utilisateur=user)
+                return InscriptionTournoi.objects.filter(joueur=joueur)
+            except Joueur.DoesNotExist:
+                return InscriptionTournoi.objects.none()
+        return InscriptionTournoi.objects.none()
+
+    def update(self, request, *args, **kwargs):
+        if request.user.role != 'organisateur':
+            return Response(
+                {"detail": "Seuls les organisateurs peuvent modifier le statut des inscriptions"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        instance = self.get_object()
+        if instance.tournoi.organisateur != request.user.organisateur:
+            return Response(
+                {"detail": "Vous n'êtes pas l'organisateur de ce tournoi"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if 'statut' not in request.data:
+            return Response(
+                {"detail": "Le statut est requis"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        nouveau_statut = request.data['statut']
+        if nouveau_statut not in ['validee', 'refusee']:
+            return Response(
+                {"detail": "Statut invalide"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Mettre à jour le statut
+        instance.statut = nouveau_statut
+        instance.save()
+
+        # Si l'inscription est validée, mettre à jour le nombre d'équipes inscrites
+        if nouveau_statut == 'validee':
+            try:
+                tournoi = instance.tournoi
+                tournoi.registeredTeams = (tournoi.registeredTeams or 0) + 1
+                tournoi.save()
+            except Exception as e:
+                print(f"Erreur lors de la mise à jour du nombre d'équipes: {str(e)}")
+
+        # Envoyer une notification au joueur (à implémenter si nécessaire)
+        # TODO: Ajouter un système de notification
+
+        return Response(
+            {
+                "message": f"Inscription {nouveau_statut} avec succès",
+                "inscription": self.get_serializer(instance).data
+            },
+            status=status.HTTP_200_OK
+        )

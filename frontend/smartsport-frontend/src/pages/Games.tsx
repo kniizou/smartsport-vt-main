@@ -119,7 +119,7 @@ const Games = () => {
                   </div>
                   <p className="text-muted-foreground text-sm mb-4">{game.description}</p>
                   
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <div className="flex items-center">
                       <Trophy className="h-4 w-4 mr-1 text-accent" />
                       <span>{game.tournaments} tournois</span>
@@ -129,13 +129,6 @@ const Games = () => {
                       <span>{game.players} joueurs</span>
                     </div>
                   </div>
-                  
-                  <Link to={`/games/${game.id}`}>
-                    <Button variant="outline" className="w-full group border-accent/50 hover:bg-accent/10 hover:text-accent">
-                      <span>Voir les tournois</span>
-                      <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </Link>
                 </div>
               </div>
             ))}
