@@ -126,7 +126,7 @@ const TournamentDetail = () => {
     const equipeId = parseInt(equipeIdInput);
 
     try {
-      await api.post(`/tournois/${tournament.id}/inscrire_equipe/`, { equipe_id: equipeId });
+      await api.post(`/api/tournois/${tournament.id}/inscrire_equipe/`, { equipe_id: equipeId });
       toast({ title: "Inscription réussie!", description: `Votre équipe (ID: ${equipeId}) a été inscrite au tournoi ${tournament.nom}.` });
       // Optionnel: Mettre à jour le nombre d'équipes inscrites si l'API le renvoie ou re-fetcher.
       if (tournament) {

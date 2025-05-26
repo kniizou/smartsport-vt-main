@@ -79,7 +79,7 @@ const OrganisateurDashboard = () => {
 
   const handleValiderInscription = async (inscriptionId: number) => {
     try {
-      await api.patch(`/inscriptions/${inscriptionId}/`, { statut: 'validee' });
+      await api.patch(`/api/inscriptions/${inscriptionId}/`, { statut: 'validee' });
       setInscriptions(prev => prev.map(inscription => 
         inscription.id === inscriptionId 
           ? { ...inscription, statut: 'validee' }
@@ -93,14 +93,14 @@ const OrganisateurDashboard = () => {
   };
 
   const handleRefuserInscription = async (inscriptionId: number) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir refuser et supprimer cette inscription ? Cette action est irréversible.")) {
+      return;
+    }
+    
     try {
-      await api.patch(`/inscriptions/${inscriptionId}/`, { statut: 'refusee' });
-      setInscriptions(prev => prev.map(inscription => 
-        inscription.id === inscriptionId 
-          ? { ...inscription, statut: 'refusee' }
-          : inscription
-      ));
-      toast.success("Inscription refusée");
+      await api.delete(`/api/inscriptions/${inscriptionId}/`);
+      setInscriptions(prev => prev.filter(inscription => inscription.id !== inscriptionId));
+      toast.success("Inscription refusée et supprimée");
     } catch (error) {
       console.error("Erreur lors du refus:", error);
       toast.error("Erreur lors du refus de l'inscription");

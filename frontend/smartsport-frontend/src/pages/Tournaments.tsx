@@ -115,7 +115,7 @@ const Tournaments = () => {
     const fetchTournaments = async () => {
       setIsLoading(true);
       try {
-        const response = await api.get<ApiTournament[]>('/tournois/');
+        const response = await api.get<ApiTournament[]>('/api/tournois/');
         // Ajouter le champ prize_formatted pour l'affichage
         const tournamentsWithFormattedPrize = response.data.map(t => ({
           ...t,

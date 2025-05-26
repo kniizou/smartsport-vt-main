@@ -1,13 +1,12 @@
-
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Menu, X, LogIn, User, Gamepad, Trophy, LogOut, UserCircle, ShieldCheck } from "lucide-react"; // Added ShieldCheck
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { Menu, X, LogIn, User, Gamepad, Trophy, LogOut, UserCircle, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { isAuthenticated, user, logout, isLoading } = useAuth(); // Use auth context
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -17,14 +16,14 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    toggleMenu(); // Close menu if open
-    navigate('/'); // Redirect to home after logout
+    toggleMenu();
+    navigate('/');
   };
   
   const isActive = (path: string) => location.pathname === path;
 
   if (isLoading) {
-    return ( // Or a more sophisticated loading skeleton for the navbar
+    return (
       <nav className="sticky top-0 z-50 w-full border-b border-border/50 backdrop-blur-xl bg-background/80">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div>Loading...</div>
@@ -84,14 +83,6 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Rechercher..." 
-              className="w-48 pl-10 pr-4 py-2 bg-secondary/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-            />
-          </div>
           {isAuthenticated ? (
             <>
               {user?.role === 'administrateur' ? (
@@ -129,9 +120,6 @@ const Navbar = () => {
 
         {/* Mobile Navigation Toggle */}
         <div className="md:hidden flex items-center space-x-3">
-          <Button variant="outline" size="icon" className="rounded-lg border-border/50">
-            <Search className="h-4 w-4" />
-          </Button>
           <Button variant="outline" size="icon" className="rounded-lg border-border/50" onClick={toggleMenu}>
             {isMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>

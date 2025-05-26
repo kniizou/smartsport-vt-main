@@ -58,7 +58,7 @@ const CreerTournoiPage = () => {
     };
 
     try {
-      await api.post('/tournois/', tournoiData); // L'intercepteur gère le token
+      await api.post('/api/tournois/', tournoiData); // L'intercepteur gère le token
       toast.success('Tournoi créé avec succès !');
       navigate('/organisateur/dashboard'); // Rediriger vers le dashboard organisateur
     } catch (error) { // Type 'unknown' est plus sûr que 'any' par défaut
