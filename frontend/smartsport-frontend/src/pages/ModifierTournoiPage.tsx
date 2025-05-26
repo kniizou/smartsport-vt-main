@@ -65,7 +65,7 @@ const ModifierTournoiPage = () => {
     const fetchTournoi = async () => {
       setIsFetching(true);
       try {
-        const response = await api.get(`/tournois/${tournoiId}/`);
+        const response = await api.get(`/api/tournois/${tournoiId}/`);
         const tournoi = response.data;
         setFormData({
           nom: tournoi.nom,
@@ -111,7 +111,7 @@ const ModifierTournoiPage = () => {
     };
 
     try {
-      await api.put(`/tournois/${tournoiId}/`, tournoiDataToSubmit);
+      await api.put(`/api/tournois/${tournoiId}/`, tournoiDataToSubmit);
       toast.success('Tournoi mis à jour avec succès !');
       navigate('/organisateur/dashboard');
     } catch (error) {

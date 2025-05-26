@@ -59,8 +59,8 @@ const OrganisateurDashboard = () => {
       setIsLoading(true);
       try {
         const [tournoisResponse, inscriptionsResponse] = await Promise.all([
-          api.get('/tournois/'),
-          api.get('/inscriptions/')
+          api.get('/api/tournois/mes_tournois/'),
+          api.get('/api/inscriptions/')
         ]);
         setTournois(tournoisResponse.data);
         setInscriptions(inscriptionsResponse.data);
