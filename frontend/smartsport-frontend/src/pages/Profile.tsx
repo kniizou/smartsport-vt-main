@@ -24,6 +24,7 @@ interface Tournament {
   format?: string;
   registeredTeams?: number;
   teamsCount?: number;
+  inscription_status?: string;
 }
 
 interface ApiErrorResponse {
@@ -32,7 +33,7 @@ interface ApiErrorResponse {
 
 type StatusVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
-const getStatusBadge = (statut: string) => {
+const getStatusBadge = (statut: string, inscriptionStatus?: string) => {
   const statusConfig: Record<string, { label: string; variant: StatusVariant }> = {
     'planifie': { label: 'Planifié', variant: 'secondary' },
     'en_cours': { label: 'En cours', variant: 'default' },
@@ -41,6 +42,19 @@ const getStatusBadge = (statut: string) => {
   };
 
   const config = statusConfig[statut] || { label: statut, variant: 'secondary' };
+  return <Badge variant={config.variant}>{config.label}</Badge>;
+};
+
+const getInscriptionStatusBadge = (status?: string) => {
+  if (!status) return null;
+  
+  const statusConfig: Record<string, { label: string; variant: StatusVariant }> = {
+    'en_attente': { label: 'En attente', variant: 'secondary' },
+    'validee': { label: 'Validée', variant: 'default' },
+    'refusee': { label: 'Refusée', variant: 'destructive' }
+  };
+
+  const config = statusConfig[status] || { label: status, variant: 'secondary' };
   return <Badge variant={config.variant}>{config.label}</Badge>;
 };
 
@@ -92,7 +106,7 @@ const ProfilePage: React.FC = () => {
     <>
       <Navbar />
       <div className="container mx-auto px-4 py-8 min-h-screen">
-        <h1 className="text-3xl font-bold mb-6">Profil de {user.first_name || user.email}</h1>
+        <h1 className="text-3xl font-bold mb-6">Profil de {user.username || user.first_name || user.email}</h1>
         
         <div className="bg-card p-6 rounded-lg shadow-md mb-6">
           <h2 className="text-xl font-semibold mb-3">Informations personnelles</h2>
@@ -133,10 +147,19 @@ const ProfilePage: React.FC = () => {
           ) : myTournaments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {myTournaments.map((tournament) => (
-                <Card key={tournament.id} className="hover:shadow-lg transition-shadow">
+                <Card 
+                  key={tournament.id} 
+                  className={`hover:shadow-lg transition-shadow ${
+                    tournament.inscription_status === 'refusee' ? 'border-red-500' :
+                    tournament.inscription_status === 'validee' ? 'border-green-500' : ''
+                  }`}
+                >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-bold">{tournament.nom}</CardTitle>
-                    {getStatusBadge(tournament.statut)}
+                    <div className="flex gap-2">
+                      {getStatusBadge(tournament.statut, tournament.inscription_status)}
+                      {getInscriptionStatusBadge(tournament.inscription_status)}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{tournament.description}</p>

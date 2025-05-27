@@ -38,7 +38,7 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'role')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role')
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -207,14 +207,27 @@ class JoueurEquipeSerializer(serializers.ModelSerializer):
 
 
 class TournoiSerializer(serializers.ModelSerializer):
+    inscription_status = serializers.SerializerMethodField()
+
     class Meta:
         model = Tournoi
         fields = [
             'id', 'nom', 'description', 'type', 'regles',
             'date_debut', 'date_fin', 'prix_inscription',
-            'statut', 'organisateur'
+            'statut', 'organisateur', 'inscription_status'
         ]
         read_only_fields = ['organisateur']
+
+    def get_inscription_status(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.role == 'joueur':
+            try:
+                joueur = Joueur.objects.get(utilisateur=request.user)
+                inscription = InscriptionTournoi.objects.filter(tournoi=obj, joueur=joueur).first()
+                return inscription.statut if inscription else None
+            except Joueur.DoesNotExist:
+                return None
+        return None
 
     def validate(self, data):
         if data['date_fin'] <= data['date_debut']:

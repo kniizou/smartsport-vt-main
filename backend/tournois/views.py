@@ -400,7 +400,7 @@ class TournoiViewSet(viewsets.ModelViewSet):
             try:
                 organisateur_profile = request.user.organisateur
                 tournois = Tournoi.objects.filter(organisateur=organisateur_profile)
-                serializer = self.get_serializer(tournois, many=True)
+                serializer = self.get_serializer(tournois, many=True, context={'request': request})
                 return Response(serializer.data)
             except Organisateur.DoesNotExist:
                 return Response(
@@ -412,7 +412,7 @@ class TournoiViewSet(viewsets.ModelViewSet):
                 joueur = Joueur.objects.get(utilisateur=request.user)
                 inscriptions = InscriptionTournoi.objects.filter(joueur=joueur)
                 tournois = [inscription.tournoi for inscription in inscriptions]
-                serializer = self.get_serializer(tournois, many=True)
+                serializer = self.get_serializer(tournois, many=True, context={'request': request})
                 return Response(serializer.data)
             except Joueur.DoesNotExist:
                 return Response(
